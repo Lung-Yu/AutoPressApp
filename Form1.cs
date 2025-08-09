@@ -71,7 +71,7 @@ namespace AutoPressApp
         private Timer replayTimer;
         private bool isRunning = false;
         private bool isRecording = false;
-        private bool isReplaying = false;
+        private bool isReplaying = false; // 用於判斷目前是否在回放
         private Keys selectedKey = Keys.F1;
         private IntPtr targetWindowHandle = IntPtr.Zero;
         private string targetWindowTitle = "";
@@ -82,6 +82,8 @@ namespace AutoPressApp
         private IntPtr keyboardHook = IntPtr.Zero;
         private LowLevelKeyboardProc hookProc;
         private int replayIndex = 0;
+    // 是否要循環回放（透過 UI CheckBox 控制）
+    private bool LoopPlayback => chkLoop != null && chkLoop.Checked;
 
         public Form1()
         {
@@ -91,6 +93,16 @@ namespace AutoPressApp
             
             // 初始化鍵盤鉤子
             hookProc = HookCallback;
+            
+            // 停用原本單一按鍵選擇（改為以記錄序列為主）
+            if (cmbKeys != null)
+            {
+                cmbKeys.Enabled = false; // 仍保留 UI 但不再使用
+            }
+            if (lblKey != null)
+            {
+                lblKey.Text = "執行模式: 記錄序列";
+            }
             
             // 註冊關閉事件
             this.FormClosing += Form1_FormClosing;
@@ -158,14 +170,23 @@ namespace AutoPressApp
 
         private void ReplayTimer_Tick(object sender, EventArgs e)
         {
+            if (!isReplaying) { replayTimer.Stop(); return; }
             if (replayIndex >= recordedKeys.Count)
             {
-                // 回放完成
+                if (LoopPlayback && recordedKeys.Count > 0)
+                {
+                    replayIndex = 0; // 重頭
+                    int firstDelay = recordedKeys[0].DelayMs <= 0 ? 30 : recordedKeys[0].DelayMs;
+                    replayTimer.Interval = firstDelay;
+                    UpdateStatus($"循環回放重新開始 (共 {recordedKeys.Count} 按鍵)");
+                    return; // 等下一輪 tick
+                }
+                // 單次結束
                 replayTimer.Stop();
                 isReplaying = false;
                 btnReplay.Text = "回放記錄";
                 btnReplay.Enabled = true;
-                UpdateStatus("回放完成");
+                UpdateStatus("回放完成 (單次)");
                 replayIndex = 0;
                 return;
             }
@@ -281,13 +302,7 @@ namespace AutoPressApp
         {
             if (!isRunning)
             {
-                // Get selected key from combo box
-                if (cmbKeys.SelectedItem != null)
-                {
-                    Enum.TryParse(cmbKeys.SelectedItem.ToString(), out selectedKey);
-                }
-
-                // Get selected application
+                // 取得目標視窗
                 if (cmbApplications.SelectedItem is ApplicationItem app)
                 {
                     targetWindowHandle = app.WindowHandle;
@@ -299,17 +314,47 @@ namespace AutoPressApp
                     targetWindowTitle = "當前焦點視窗";
                 }
 
-                autoTimer.Start();
-                isRunning = true;
-                btnStart.Text = "停止";
-                UpdateStatus($"自動按鍵已開始 - 按鍵: {selectedKey}, 目標: {targetWindowTitle}");
+                // 若有記錄的按鍵，使用「序列回放模式」
+                if (recordedKeys.Count > 0)
+                {
+                    // 初始化回放狀態
+                    replayIndex = 0;
+                    isReplaying = true;
+                    isRunning = true;
+                    btnStart.Text = "停止";
+
+                    // 第一筆延遲（若為0則給一個極小延遲避免 UI 卡住）
+                    int firstDelay = recordedKeys[0].DelayMs <= 0 ? 30 : recordedKeys[0].DelayMs;
+                    replayTimer.Interval = firstDelay;
+                    replayTimer.Start();
+                    UpdateStatus($"開始回放記錄序列，共 {recordedKeys.Count} 個按鍵 → 目標: {targetWindowTitle}");
+
+                    // 禁用記錄/回放按鈕避免衝突
+                    if (btnRecord != null) btnRecord.Enabled = false;
+                    if (btnReplay != null) btnReplay.Enabled = false;
+                    if (btnClearRecord != null) btnClearRecord.Enabled = false;
+                }
+                else
+                {
+                    // 沒有記錄 → 提示使用者
+                    MessageBox.Show("尚未記錄任何按鍵，請先使用『開始記錄』功能。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
             }
             else
             {
-                autoTimer.Stop();
+                // 停止所有模式
+                if (autoTimer.Enabled) autoTimer.Stop();
+                if (replayTimer.Enabled) replayTimer.Stop();
                 isRunning = false;
+                isReplaying = false;
                 btnStart.Text = "開始";
-                UpdateStatus("自動按鍵已停止");
+                UpdateStatus("執行已停止");
+
+                // 回復按鍵記錄相關按鈕狀態
+                if (btnRecord != null) btnRecord.Enabled = true;
+                if (btnClearRecord != null) btnClearRecord.Enabled = recordedKeys.Count > 0;
+                if (btnReplay != null) btnReplay.Enabled = recordedKeys.Count > 0;
             }
         }
 

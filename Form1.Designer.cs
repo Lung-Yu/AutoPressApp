@@ -44,6 +44,7 @@
             this.btnClearRecord = new System.Windows.Forms.Button();
             this.lstRecordedKeys = new System.Windows.Forms.ListBox();
             this.lblRecordedKeys = new System.Windows.Forms.Label();
+            this.chkLoop = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -200,6 +201,7 @@
             this.groupBox2.Controls.Add(this.btnClearRecord);
             this.groupBox2.Controls.Add(this.btnReplay);
             this.groupBox2.Controls.Add(this.btnRecord);
+            this.groupBox2.Controls.Add(this.chkLoop);
             this.groupBox2.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox2.Location = new System.Drawing.Point(30, 210);
             this.groupBox2.Name = "groupBox2";
@@ -263,6 +265,17 @@
             this.lblRecordedKeys.TabIndex = 15;
             this.lblRecordedKeys.Text = "記錄的按鍵:";
             // 
+            // chkLoop
+            // 
+            this.chkLoop.AutoSize = true;
+            this.chkLoop.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.chkLoop.Location = new System.Drawing.Point(380, 40);
+            this.chkLoop.Name = "chkLoop";
+            this.chkLoop.Size = new System.Drawing.Size(51, 20);
+            this.chkLoop.TabIndex = 16;
+            this.chkLoop.Text = "循環";
+            this.chkLoop.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -305,6 +318,7 @@
         private System.Windows.Forms.Button btnClearRecord;
         private System.Windows.Forms.ListBox lstRecordedKeys;
         private System.Windows.Forms.Label lblRecordedKeys;
+    private System.Windows.Forms.CheckBox chkLoop;
     }
 }
 
