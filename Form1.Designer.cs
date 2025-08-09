@@ -38,14 +38,21 @@
             this.cmbApplications = new System.Windows.Forms.ComboBox();
             this.lblApplication = new System.Windows.Forms.Label();
             this.btnRefresh = new System.Windows.Forms.Button();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.btnRecord = new System.Windows.Forms.Button();
+            this.btnReplay = new System.Windows.Forms.Button();
+            this.btnClearRecord = new System.Windows.Forms.Button();
+            this.lstRecordedKeys = new System.Windows.Forms.ListBox();
+            this.lblRecordedKeys = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
             this.groupBox1.SuspendLayout();
+            this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnStart
             // 
             this.btnStart.Font = new System.Drawing.Font("Microsoft JhengHei", 12F, System.Drawing.FontStyle.Bold);
-            this.btnStart.Location = new System.Drawing.Point(30, 280);
+            this.btnStart.Location = new System.Drawing.Point(30, 500);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(100, 40);
             this.btnStart.TabIndex = 0;
@@ -132,7 +139,7 @@
             this.lblStatus.AutoSize = true;
             this.lblStatus.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.lblStatus.ForeColor = System.Drawing.Color.Blue;
-            this.lblStatus.Location = new System.Drawing.Point(30, 340);
+            this.lblStatus.Location = new System.Drawing.Point(30, 560);
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(67, 16);
             this.lblStatus.TabIndex = 5;
@@ -150,10 +157,10 @@
             this.groupBox1.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox1.Location = new System.Drawing.Point(30, 30);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(450, 200);
+            this.groupBox1.Size = new System.Drawing.Size(450, 160);
             this.groupBox1.TabIndex = 6;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "設定";
+            this.groupBox1.Text = "基本設定";
             // 
             // cmbApplications
             // 
@@ -186,11 +193,82 @@
             this.btnRefresh.UseVisualStyleBackColor = true;
             this.btnRefresh.Click += new System.EventHandler(this.btnRefresh_Click);
             // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.lblRecordedKeys);
+            this.groupBox2.Controls.Add(this.lstRecordedKeys);
+            this.groupBox2.Controls.Add(this.btnClearRecord);
+            this.groupBox2.Controls.Add(this.btnReplay);
+            this.groupBox2.Controls.Add(this.btnRecord);
+            this.groupBox2.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
+            this.groupBox2.Location = new System.Drawing.Point(30, 210);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(450, 270);
+            this.groupBox2.TabIndex = 10;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "按鍵記錄與回放";
+            // 
+            // btnRecord
+            // 
+            this.btnRecord.Font = new System.Drawing.Font("Microsoft JhengHei", 10F, System.Drawing.FontStyle.Bold);
+            this.btnRecord.Location = new System.Drawing.Point(30, 30);
+            this.btnRecord.Name = "btnRecord";
+            this.btnRecord.Size = new System.Drawing.Size(100, 35);
+            this.btnRecord.TabIndex = 11;
+            this.btnRecord.Text = "開始記錄";
+            this.btnRecord.UseVisualStyleBackColor = true;
+            this.btnRecord.Click += new System.EventHandler(this.btnRecord_Click);
+            // 
+            // btnReplay
+            // 
+            this.btnReplay.Enabled = false;
+            this.btnReplay.Font = new System.Drawing.Font("Microsoft JhengHei", 10F, System.Drawing.FontStyle.Bold);
+            this.btnReplay.Location = new System.Drawing.Point(150, 30);
+            this.btnReplay.Name = "btnReplay";
+            this.btnReplay.Size = new System.Drawing.Size(100, 35);
+            this.btnReplay.TabIndex = 12;
+            this.btnReplay.Text = "回放記錄";
+            this.btnReplay.UseVisualStyleBackColor = true;
+            this.btnReplay.Click += new System.EventHandler(this.btnReplay_Click);
+            // 
+            // btnClearRecord
+            // 
+            this.btnClearRecord.Enabled = false;
+            this.btnClearRecord.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
+            this.btnClearRecord.Location = new System.Drawing.Point(270, 30);
+            this.btnClearRecord.Name = "btnClearRecord";
+            this.btnClearRecord.Size = new System.Drawing.Size(100, 35);
+            this.btnClearRecord.TabIndex = 13;
+            this.btnClearRecord.Text = "清除記錄";
+            this.btnClearRecord.UseVisualStyleBackColor = true;
+            this.btnClearRecord.Click += new System.EventHandler(this.btnClearRecord_Click);
+            // 
+            // lstRecordedKeys
+            // 
+            this.lstRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.lstRecordedKeys.FormattingEnabled = true;
+            this.lstRecordedKeys.ItemHeight = 16;
+            this.lstRecordedKeys.Location = new System.Drawing.Point(30, 100);
+            this.lstRecordedKeys.Name = "lstRecordedKeys";
+            this.lstRecordedKeys.Size = new System.Drawing.Size(390, 148);
+            this.lstRecordedKeys.TabIndex = 14;
+            // 
+            // lblRecordedKeys
+            // 
+            this.lblRecordedKeys.AutoSize = true;
+            this.lblRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
+            this.lblRecordedKeys.Location = new System.Drawing.Point(30, 80);
+            this.lblRecordedKeys.Name = "lblRecordedKeys";
+            this.lblRecordedKeys.Size = new System.Drawing.Size(93, 18);
+            this.lblRecordedKeys.TabIndex = 15;
+            this.lblRecordedKeys.Text = "記錄的按鍵:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(520, 380);
+            this.ClientSize = new System.Drawing.Size(520, 600);
+            this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.btnStart);
@@ -198,10 +276,12 @@
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "自動按鍵程式 - Auto Press";
+            this.Text = "自動按鍵程式 - Auto Press v2.0";
             ((System.ComponentModel.ISupportInitialize)(this.numInterval)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.groupBox2.ResumeLayout(false);
+            this.groupBox2.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -219,6 +299,12 @@
         private System.Windows.Forms.ComboBox cmbApplications;
         private System.Windows.Forms.Label lblApplication;
         private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.Button btnRecord;
+        private System.Windows.Forms.Button btnReplay;
+        private System.Windows.Forms.Button btnClearRecord;
+        private System.Windows.Forms.ListBox lstRecordedKeys;
+        private System.Windows.Forms.Label lblRecordedKeys;
     }
 }
 
