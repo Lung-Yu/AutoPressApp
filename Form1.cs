@@ -88,8 +88,26 @@ namespace AutoPressApp
         [DllImport("user32.dll")]
         static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        // 添加 SendMessage API 用於直接字符發送
+        [DllImport("user32.dll")]
+        static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        // 添加 keybd_event API 作為備用方案
+        [DllImport("user32.dll")]
+        static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
         [DllImport("user32.dll")]
         static extern IntPtr GetForegroundWindow();
+
+        // 添加更多API用於診斷
+        [DllImport("user32.dll")]
+        static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
         private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
@@ -430,7 +448,7 @@ namespace AutoPressApp
         {
             UpdateStatus($"[LOG] SendKeyPress 開始發送: {key}");
             
-            // 檢查目標視窗
+            // 如果有指定目標視窗，先將其設為焦點
             if (targetWindowHandle != IntPtr.Zero)
             {
                 UpdateStatus($"[LOG] 檢查目標視窗: {targetWindowHandle}");
@@ -438,18 +456,22 @@ namespace AutoPressApp
                 bool isVisible = IsWindowVisible(targetWindowHandle);
                 UpdateStatus($"[LOG] 視窗狀態: Valid={isValidWindow}, Visible={isVisible}");
                 
-                if (isValidWindow)
+                if (isValidWindow && isVisible)
                 {
-                    // 先嘗試設置前景視窗
+                    // 設置為前景視窗
                     bool setForeground = SetForegroundWindow(targetWindowHandle);
                     UpdateStatus($"[LOG] SetForegroundWindow 結果: {setForeground}");
                     
-                    // 顯示視窗
-                    bool showWindow = ShowWindow(targetWindowHandle, SW_RESTORE);
-                    UpdateStatus($"[LOG] ShowWindow 結果: {showWindow}");
+                    // 確保視窗可見
+                    ShowWindow(targetWindowHandle, SW_RESTORE);
                     
-                    // 等待視窗準備好
-                    System.Threading.Thread.Sleep(100);
+                    // 等待視窗切換完成
+                    System.Threading.Thread.Sleep(200);
+                    
+                    // 確認前景視窗
+                    IntPtr foregroundWindow = GetForegroundWindow();
+                    bool isForeground = foregroundWindow == targetWindowHandle;
+                    UpdateStatus($"[LOG] 前景視窗檢查: Expected={targetWindowHandle}, Actual={foregroundWindow}, Match={isForeground}");
                 }
                 else
                 {
@@ -459,14 +481,43 @@ namespace AutoPressApp
             }
             else
             {
-                UpdateStatus("[LOG] 使用當前焦點視窗");
+                UpdateStatus("[LOG] 沒有指定目標視窗，使用當前焦點視窗");
             }
             
+            // 發送按鍵到系統
+            SendInputToSystem(key);
+        }
+        
+        private void SendInputToTarget(Keys key)
+        {
+            UpdateStatus($"[LOG] 開始發送按鍵到系統: {key}");
+            
+            // 確保目標視窗是焦點視窗（如果有指定的話）
+            if (targetWindowHandle != IntPtr.Zero)
+            {
+                bool setForeground = SetForegroundWindow(targetWindowHandle);
+                UpdateStatus($"[LOG] 設置目標視窗為焦點: {setForeground}");
+                
+                // 等待視窗切換完成
+                System.Threading.Thread.Sleep(100);
+                
+                // 確認前景視窗
+                IntPtr currentForeground = GetForegroundWindow();
+                bool isForeground = currentForeground == targetWindowHandle;
+                UpdateStatus($"[LOG] 前景視窗確認: Expected={targetWindowHandle}, Actual={currentForeground}, Match={isForeground}");
+            }
+            
+            // 使用全域 SendInput 發送到系統（不指定特定視窗）
+            SendInputToSystem(key);
+        }
+
+        private void SendInputToSystem(Keys key)
+        {
             // 取得正確的虛擬鍵碼
             ushort virtualKey = GetVirtualKeyCode(key);
             UpdateStatus($"[LOG] 虛擬鍵碼轉換: {key} -> 0x{virtualKey:X2}");
             
-            // 使用 SendInput 發送
+            // 使用 SendInput 發送到系統
             var inputs = new List<INPUT>();
             
             // 按下按鍵
@@ -503,15 +554,22 @@ namespace AutoPressApp
                 }
             });
             
-            UpdateStatus($"[LOG] 準備發送 {inputs.Count} 個輸入事件");
+            UpdateStatus($"[LOG] 準備發送 {inputs.Count} 個全域輸入事件");
             
             uint result = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
-            UpdateStatus($"[LOG] SendInput 結果: {result}/{inputs.Count}, VK=0x{virtualKey:X2}");
+            UpdateStatus($"[LOG] 全域 SendInput 結果: {result}/{inputs.Count}, VK=0x{virtualKey:X2}");
             
             if (result == 0)
             {
                 int error = Marshal.GetLastWin32Error();
-                UpdateStatus($"[LOG] SendInput 失敗，錯誤代碼: {error}");
+                UpdateStatus($"[LOG] 全域 SendInput 失敗，錯誤代碼: {error}");
+                
+                // 嘗試使用 keybd_event 作為備用
+                UpdateStatus("[LOG] 嘗試使用 keybd_event 備用方案");
+                keybd_event((byte)virtualKey, 0, 0, UIntPtr.Zero); // 按下
+                System.Threading.Thread.Sleep(10);
+                keybd_event((byte)virtualKey, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // 釋放
+                UpdateStatus($"[LOG] keybd_event 完成: {key}");
             }
             else if (result != inputs.Count)
             {
@@ -519,7 +577,148 @@ namespace AutoPressApp
             }
             else
             {
-                UpdateStatus($"[LOG] SendInput 成功發送按鍵: {key}");
+                UpdateStatus($"[LOG] 全域 SendInput 成功發送按鍵: {key}");
+            }
+        }
+
+        private bool TryClipboardMethod(Keys key)
+        {
+            try
+            {
+                // 將按鍵轉換為字符
+                char character = GetCharFromKey(key);
+                if (character == '\0' || char.IsControl(character))
+                {
+                    return false; // 只處理可打印字符
+                }
+                
+                UpdateStatus($"[LOG] 嘗試剪貼板方法發送: '{character}'");
+                
+                // 保存當前剪貼板內容
+                string originalClipboard = "";
+                if (System.Windows.Forms.Clipboard.ContainsText())
+                {
+                    originalClipboard = System.Windows.Forms.Clipboard.GetText();
+                }
+                
+                // 將字符放入剪貼板
+                System.Windows.Forms.Clipboard.SetText(character.ToString());
+                
+                // 發送 Ctrl+V 到目標視窗
+                const uint WM_KEYDOWN = 0x0100;
+                const uint WM_KEYUP = 0x0101;
+                const int VK_CONTROL = 0x11;
+                const int VK_V = 0x56;
+                
+                // 按下 Ctrl
+                SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)VK_CONTROL, IntPtr.Zero);
+                System.Threading.Thread.Sleep(10);
+                
+                // 按下 V
+                SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)VK_V, IntPtr.Zero);
+                System.Threading.Thread.Sleep(10);
+                
+                // 釋放 V
+                SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)VK_V, IntPtr.Zero);
+                System.Threading.Thread.Sleep(10);
+                
+                // 釋放 Ctrl
+                SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)VK_CONTROL, IntPtr.Zero);
+                
+                // 等待一下讓貼上完成
+                System.Threading.Thread.Sleep(100);
+                
+                // 恢復原來的剪貼板內容
+                if (!string.IsNullOrEmpty(originalClipboard))
+                {
+                    System.Windows.Forms.Clipboard.SetText(originalClipboard);
+                }
+                else
+                {
+                    System.Windows.Forms.Clipboard.Clear();
+                }
+                
+                UpdateStatus($"[LOG] 剪貼板方法完成");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus($"[LOG] 剪貼板方法失敗: {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool TrySendCharMessage(Keys key)
+        {
+            if (targetWindowHandle == IntPtr.Zero)
+                return false;
+                
+            // 將 Keys 轉換為字符
+            char character = GetCharFromKey(key);
+            if (character == '\0')
+            {
+                UpdateStatus($"[LOG] 無法轉換按鍵為字符: {key}");
+                return false;
+            }
+            
+            // 獲取虛擬鍵碼
+            ushort virtualKey = GetVirtualKeyCode(key);
+            
+            UpdateStatus($"[LOG] 嘗試發送完整按鍵序列: '{character}' (VK=0x{virtualKey:X2})");
+            
+            // 發送完整的按鍵序列：KEYDOWN -> CHAR -> KEYUP
+            const uint WM_KEYDOWN = 0x0100;
+            const uint WM_CHAR = 0x0102;
+            const uint WM_KEYUP = 0x0101;
+            
+            // 1. 發送 WM_KEYDOWN
+            IntPtr keyDownResult = SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)virtualKey, IntPtr.Zero);
+            UpdateStatus($"[LOG] SendMessage WM_KEYDOWN 結果: {keyDownResult}");
+            
+            // 短暫延遲
+            System.Threading.Thread.Sleep(10);
+            
+            // 2. 發送 WM_CHAR (只對可打印字符)
+            if (char.IsControl(character) == false)
+            {
+                IntPtr charResult = SendMessage(targetWindowHandle, WM_CHAR, (IntPtr)character, IntPtr.Zero);
+                UpdateStatus($"[LOG] SendMessage WM_CHAR 結果: {charResult}");
+            }
+            
+            // 短暫延遲
+            System.Threading.Thread.Sleep(10);
+            
+            // 3. 發送 WM_KEYUP
+            IntPtr keyUpResult = SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)virtualKey, IntPtr.Zero);
+            UpdateStatus($"[LOG] SendMessage WM_KEYUP 結果: {keyUpResult}");
+            
+            // 檢查是否至少有一個消息被處理
+            bool anySuccess = keyDownResult != IntPtr.Zero || keyUpResult != IntPtr.Zero;
+            UpdateStatus($"[LOG] 按鍵序列發送完成，成功: {anySuccess}");
+            
+            // 只有當消息確實被處理時才返回 true
+            return anySuccess;
+        }
+
+        private char GetCharFromKey(Keys key)
+        {
+            // 將常見的按鍵轉換為對應的字符
+            if (key >= Keys.A && key <= Keys.Z)
+            {
+                return (char)('A' + (key - Keys.A));
+            }
+            
+            if (key >= Keys.D0 && key <= Keys.D9)
+            {
+                return (char)('0' + (key - Keys.D0));
+            }
+            
+            switch (key)
+            {
+                case Keys.Space: return ' ';
+                case Keys.Enter: return '\r';
+                case Keys.Tab: return '\t';
+                default: return '\0'; // 無法轉換
             }
         }
 
@@ -729,8 +928,23 @@ namespace AutoPressApp
 
         private void UpdateStatus(string message)
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<string>(UpdateStatus), message);
+                return;
+            }
+            
+            // 更新狀態標籤
             if (lblStatus != null)
                 lblStatus.Text = message;
+                
+            // 同時將訊息添加到底部的日誌文字框
+            if (txtTest != null)
+            {
+                txtTest.AppendText($"{DateTime.Now:HH:mm:ss} - {message}{Environment.NewLine}");
+                txtTest.SelectionStart = txtTest.Text.Length;
+                txtTest.ScrollToCaret();
+            }
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -877,18 +1091,59 @@ namespace AutoPressApp
                 UpdateStatus($"[BUTTON] chkTestMode 詳細: Visible={chkTestMode.Visible}, Enabled={chkTestMode.Enabled}, Text='{chkTestMode.Text}'");
             }
             
-            // 獲取目標視窗
+            // 獲取目標視窗 - 這裡是關鍵！
+            UpdateStatus($"[BUTTON] 下拉選單狀態: SelectedIndex={cmbApplications.SelectedIndex}, ItemCount={cmbApplications.Items.Count}");
+            if (cmbApplications.SelectedItem != null)
+            {
+                UpdateStatus($"[BUTTON] 選中項目類型: {cmbApplications.SelectedItem.GetType().Name}");
+                UpdateStatus($"[BUTTON] 選中項目內容: {cmbApplications.SelectedItem}");
+            }
+            
             if (cmbApplications.SelectedItem is ApplicationItem app)
             {
                 targetWindowHandle = app.WindowHandle;
                 targetWindowTitle = app.WindowTitle;
-                UpdateStatus($"[BUTTON] 目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
+                UpdateStatus($"[BUTTON] 設置目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
+                
+                // 立即驗證視窗是否有效
+                bool isValid = IsWindow(targetWindowHandle);
+                bool isVisible = IsWindowVisible(targetWindowHandle);
+                UpdateStatus($"[BUTTON] 目標視窗驗證: Valid={isValid}, Visible={isVisible}");
+                
+                // 檢查視窗是否在前台
+                IntPtr foregroundWindow = GetForegroundWindow();
+                UpdateStatus($"[BUTTON] 當前前台視窗: {foregroundWindow}, 目標視窗: {targetWindowHandle}");
+                
+                // 嘗試激活目標視窗
+                SetForegroundWindow(targetWindowHandle);
+                UpdateStatus($"[BUTTON] 嘗試激活目標視窗");
             }
             else
             {
                 targetWindowHandle = IntPtr.Zero;
                 targetWindowTitle = "當前焦點視窗";
-                UpdateStatus("[BUTTON] 使用當前焦點視窗");
+                UpdateStatus("[BUTTON] 使用當前焦點視窗 - 這可能是問題所在！");
+                
+                // 檢查為什麼不是ApplicationItem
+                if (cmbApplications.SelectedItem != null)
+                {
+                    UpdateStatus($"[BUTTON] 選中項目不是ApplicationItem，而是: {cmbApplications.SelectedItem.GetType().Name}");
+                    UpdateStatus($"[BUTTON] 內容: '{cmbApplications.SelectedItem.ToString()}'");
+                    
+                    // 如果選中的是字符串，嘗試獲取當前前台視窗
+                    IntPtr foregroundWindow = GetForegroundWindow();
+                    UpdateStatus($"[BUTTON] 當前前台視窗句柄: {foregroundWindow}");
+                    if (foregroundWindow != IntPtr.Zero)
+                    {
+                        targetWindowHandle = foregroundWindow;
+                        
+                        // 獲取視窗標題
+                        StringBuilder windowTitle = new StringBuilder(256);
+                        GetWindowText(foregroundWindow, windowTitle, windowTitle.Capacity);
+                        targetWindowTitle = windowTitle.ToString();
+                        UpdateStatus($"[BUTTON] 前台視窗標題: {targetWindowTitle}");
+                    }
+                }
             }
             
             // 開始簡單的單次回放
@@ -898,6 +1153,7 @@ namespace AutoPressApp
             btnReplay.Enabled = false;
             
             UpdateStatus($"[BUTTON] 設定回放狀態: replayIndex={replayIndex}, isReplaying={isReplaying}");
+            UpdateStatus($"[BUTTON] 最終目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
             
             // 使用簡單的定時器邏輯
             replayTimer.Interval = 100; // 100ms後開始第一個按鍵
