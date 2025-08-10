@@ -84,6 +84,13 @@ namespace AutoPressApp
         [DllImport("kernel32.dll")]
         static extern IntPtr GetModuleHandle(string lpModuleName);
 
+        // 添加 PostMessage API 作為備用方案
+        [DllImport("user32.dll")]
+        static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetForegroundWindow();
+
         private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
     private const int WM_KEYUP = 0x0101;
@@ -256,14 +263,39 @@ namespace AutoPressApp
             
             if (!isReplaying || replayIndex >= recordedKeys.Count)
             {
-                // 結束回放
-                UpdateStatus($"[TIMER] 回放結束條件: isReplaying={isReplaying}, replayIndex={replayIndex}");
-                replayTimer.Stop();
-                isReplaying = false;
-                btnReplay.Text = "回放記錄";
-                btnReplay.Enabled = true;
-                UpdateStatus("回放完成");
-                return;
+                // 檢查是否需要循環
+                bool shouldLoop = LoopPlayback;
+                UpdateStatus($"[TIMER] 回放結束檢查: isReplaying={isReplaying}, replayIndex={replayIndex}, shouldLoop={shouldLoop}");
+                
+                if (shouldLoop && isReplaying)
+                {
+                    // 循環回放：重置索引並繼續
+                    replayIndex = 0;
+                    UpdateStatus("[TIMER] 循環重新開始");
+                    
+                    // 繼續執行，不要return
+                }
+                else
+                {
+                    // 結束回放
+                    UpdateStatus($"[TIMER] 回放結束條件: isReplaying={isReplaying}, replayIndex={replayIndex}");
+                    replayTimer.Stop();
+                    isReplaying = false;
+                    
+                    // 根據是從哪個按鈕開始的來決定如何恢復按鈕狀態
+                    if (btnReplay != null)
+                    {
+                        btnReplay.Text = "回放記錄";
+                        btnReplay.Enabled = true;
+                    }
+                    if (btnStart != null)
+                    {
+                        btnStart.Text = "開始";
+                    }
+                    
+                    UpdateStatus("回放完成");
+                    return;
+                }
             }
             
             var record = recordedKeys[replayIndex];
@@ -288,17 +320,31 @@ namespace AutoPressApp
             else
             {
                 // 正常模式：發送按鍵
+                UpdateStatus($"[NORMAL] 準備發送按鍵到目標視窗");
+                
                 if (targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle))
                 {
-                    UpdateStatus($"[NORMAL] 設定目標視窗: {targetWindowHandle}");
-                    SetForegroundWindow(targetWindowHandle);
-                    ShowWindow(targetWindowHandle, SW_RESTORE);
-                    System.Threading.Thread.Sleep(30);
+                    UpdateStatus($"[NORMAL] 設定目標視窗: {targetWindowHandle} ({targetWindowTitle})");
+                    
+                    // 嘗試將目標視窗設為前景
+                    bool success = SetForegroundWindow(targetWindowHandle);
+                    if (success)
+                    {
+                        UpdateStatus("[NORMAL] 成功設置前景視窗");
+                        ShowWindow(targetWindowHandle, SW_RESTORE);
+                        // 給視窗更多時間來準備接收輸入
+                        System.Threading.Thread.Sleep(50);
+                    }
+                    else
+                    {
+                        UpdateStatus("[NORMAL] 警告: 無法設置前景視窗，可能被系統阻止");
+                    }
                 }
                 else
                 {
                     UpdateStatus("[NORMAL] 使用當前焦點視窗");
                 }
+                
                 SendKeyPress(record.Key);
                 UpdateStatus($"[正常模式] 已發送: {record.Key} ({replayIndex + 1}/{recordedKeys.Count})");
             }
@@ -312,6 +358,13 @@ namespace AutoPressApp
                 int actualDelay = Math.Max(100, nextDelay);
                 replayTimer.Interval = actualDelay;
                 UpdateStatus($"[TIMER] 下一個間隔: {actualDelay}ms (原始: {nextDelay}ms)");
+            }
+            else if (LoopPlayback)
+            {
+                // 循環模式：準備下一輪
+                int firstDelay = recordedKeys[0].DelayMs <= 0 ? 500 : recordedKeys[0].DelayMs; // 循環間隔稍長一點
+                replayTimer.Interval = firstDelay;
+                UpdateStatus($"[TIMER] 循環準備下一輪: {firstDelay}ms");
             }
         }
 
@@ -345,15 +398,23 @@ namespace AutoPressApp
                         };
                         
                         cmbApplications.Items.Add(item);
+                        
+                        // 為記事本添加特別的日誌
+                        if (process.ProcessName.ToLower().Contains("notepad"))
+                        {
+                            UpdateStatus($"[LOAD] 發現記事本: {process.ProcessName}, Handle: {process.MainWindowHandle}");
+                        }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     // Skip processes that can't be accessed
+                    UpdateStatus($"[LOAD] 跳過程序 {process.ProcessName}: {ex.Message}");
                 }
             }
             
             cmbApplications.SelectedIndex = 0; // Select "Current Focus Window" by default
+            UpdateStatus($"[LOAD] 載入了 {cmbApplications.Items.Count - 1} 個可用視窗");
         }
 
         public class ApplicationItem
@@ -369,11 +430,46 @@ namespace AutoPressApp
         {
             UpdateStatus($"[LOG] SendKeyPress 開始發送: {key}");
             
+            // 檢查目標視窗
+            if (targetWindowHandle != IntPtr.Zero)
+            {
+                UpdateStatus($"[LOG] 檢查目標視窗: {targetWindowHandle}");
+                bool isValidWindow = IsWindow(targetWindowHandle);
+                bool isVisible = IsWindowVisible(targetWindowHandle);
+                UpdateStatus($"[LOG] 視窗狀態: Valid={isValidWindow}, Visible={isVisible}");
+                
+                if (isValidWindow)
+                {
+                    // 先嘗試設置前景視窗
+                    bool setForeground = SetForegroundWindow(targetWindowHandle);
+                    UpdateStatus($"[LOG] SetForegroundWindow 結果: {setForeground}");
+                    
+                    // 顯示視窗
+                    bool showWindow = ShowWindow(targetWindowHandle, SW_RESTORE);
+                    UpdateStatus($"[LOG] ShowWindow 結果: {showWindow}");
+                    
+                    // 等待視窗準備好
+                    System.Threading.Thread.Sleep(100);
+                }
+                else
+                {
+                    UpdateStatus("[LOG] 警告: 目標視窗無效，使用當前焦點視窗");
+                    targetWindowHandle = IntPtr.Zero;
+                }
+            }
+            else
+            {
+                UpdateStatus("[LOG] 使用當前焦點視窗");
+            }
+            
             // 取得正確的虛擬鍵碼
             ushort virtualKey = GetVirtualKeyCode(key);
+            UpdateStatus($"[LOG] 虛擬鍵碼轉換: {key} -> 0x{virtualKey:X2}");
             
             // 使用 SendInput 發送
             var inputs = new List<INPUT>();
+            
+            // 按下按鍵
             inputs.Add(new INPUT
             {
                 type = 1,
@@ -389,6 +485,8 @@ namespace AutoPressApp
                     }
                 }
             });
+            
+            // 釋放按鍵
             inputs.Add(new INPUT
             {
                 type = 1,
@@ -405,13 +503,23 @@ namespace AutoPressApp
                 }
             });
             
+            UpdateStatus($"[LOG] 準備發送 {inputs.Count} 個輸入事件");
+            
             uint result = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
-            UpdateStatus($"[LOG] SendInput 結果: {result} (應該為 {inputs.Count}), VK={virtualKey:X2}");
+            UpdateStatus($"[LOG] SendInput 結果: {result}/{inputs.Count}, VK=0x{virtualKey:X2}");
             
             if (result == 0)
             {
                 int error = Marshal.GetLastWin32Error();
                 UpdateStatus($"[LOG] SendInput 失敗，錯誤代碼: {error}");
+            }
+            else if (result != inputs.Count)
+            {
+                UpdateStatus($"[LOG] 警告: SendInput 只處理了 {result}/{inputs.Count} 個事件");
+            }
+            else
+            {
+                UpdateStatus($"[LOG] SendInput 成功發送按鍵: {key}");
             }
         }
 
@@ -570,6 +678,55 @@ namespace AutoPressApp
             }
         }
 
+        // 測試SendInput功能
+        private void TestSendInput()
+        {
+            UpdateStatus("[TEST] 測試 SendInput 功能 - 將發送字母 'A'");
+            
+            var inputs = new INPUT[]
+            {
+                new INPUT
+                {
+                    type = 1,
+                    U = new InputUnion
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = 0x41, // A key
+                            wScan = 0,
+                            dwFlags = 0,
+                            time = 0,
+                            dwExtraInfo = UIntPtr.Zero
+                        }
+                    }
+                },
+                new INPUT
+                {
+                    type = 1,
+                    U = new InputUnion
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = 0x41, // A key
+                            wScan = 0,
+                            dwFlags = KEYEVENTF_KEYUP,
+                            time = 0,
+                            dwExtraInfo = UIntPtr.Zero
+                        }
+                    }
+                }
+            };
+            
+            uint result = SendInput(2, inputs, Marshal.SizeOf<INPUT>());
+            UpdateStatus($"[TEST] SendInput 測試結果: {result}/2");
+            
+            if (result == 0)
+            {
+                int error = Marshal.GetLastWin32Error();
+                UpdateStatus($"[TEST] SendInput 失敗，錯誤: {error}");
+            }
+        }
+
         private void UpdateStatus(string message)
         {
             if (lblStatus != null)
@@ -599,6 +756,10 @@ namespace AutoPressApp
                 return;
             }
 
+            // 檢查循環模式
+            bool loopMode = LoopPlayback;
+            UpdateStatus($"[LOG] 循環模式: {loopMode} (chkLoop.Checked = {chkLoop?.Checked})");
+
             if (cmbApplications.SelectedItem is ApplicationItem app)
             {
                 targetWindowHandle = app.WindowHandle;
@@ -616,7 +777,7 @@ namespace AutoPressApp
             if (btnStart != null) btnStart.Text = "停止";
 
             bool testMode = chkTestMode != null && chkTestMode.Checked;
-            UpdateStatus($"[LOG] 準備開始回放，測試模式: {testMode}，目標: {targetWindowTitle}");
+            UpdateStatus($"[LOG] 準備開始回放，測試模式: {testMode}，循環: {loopMode}，目標: {targetWindowTitle}");
 
             // 簡單的開始邏輯
             int firstDelay = recordedKeys[0].DelayMs <= 0 ? 100 : recordedKeys[0].DelayMs;
@@ -632,13 +793,23 @@ namespace AutoPressApp
 
         private void StopAll()
         {
-            if (replayTimer.Enabled) replayTimer.Stop();
+            UpdateStatus("[LOG] StopAll 被呼叫");
+            if (replayTimer.Enabled) 
+            {
+                replayTimer.Stop();
+                UpdateStatus("[LOG] 定時器已停止");
+            }
             isRunning = false;
             isReplaying = false;
             if (btnStart != null) btnStart.Text = "開始";
-            if (btnReplay != null) btnReplay.Enabled = recordedKeys.Count > 0;
+            if (btnReplay != null) 
+            {
+                btnReplay.Text = "回放記錄";
+                btnReplay.Enabled = recordedKeys.Count > 0;
+            }
             if (btnClearRecord != null) btnClearRecord.Enabled = recordedKeys.Count > 0;
             if (btnRecord != null) btnRecord.Enabled = true;
+            UpdateStatus("[LOG] 所有狀態已重置");
         }
 
         private void btnRefresh_Click(object sender, EventArgs e)
