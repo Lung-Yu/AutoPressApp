@@ -32,6 +32,7 @@
             // 移除單鍵/間隔相關控制項
             this.lblStatus = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.chkTestMode = new System.Windows.Forms.CheckBox();
             this.cmbApplications = new System.Windows.Forms.ComboBox();
             this.lblApplication = new System.Windows.Forms.Label();
             this.btnRefresh = new System.Windows.Forms.Button();
@@ -96,10 +97,9 @@
             // 
             // chkTestMode
             // 
-            this.chkTestMode = new System.Windows.Forms.CheckBox();
             this.chkTestMode.AutoSize = true;
             this.chkTestMode.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.chkTestMode.Location = new System.Drawing.Point(30, 30);
+            this.chkTestMode.Location = new System.Drawing.Point(30, 60);
             this.chkTestMode.Name = "chkTestMode";
             this.chkTestMode.Size = new System.Drawing.Size(87, 20);
             this.chkTestMode.TabIndex = 10;
@@ -161,7 +161,7 @@
             // 
             this.btnExport.Enabled = true;
             this.btnExport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnExport.Location = new System.Drawing.Point(30, 235);
+            this.btnExport.Location = new System.Drawing.Point(30, 210);
             this.btnExport.Name = "btnExport";
             this.btnExport.Size = new System.Drawing.Size(80, 25);
             this.btnExport.TabIndex = 17;
@@ -173,7 +173,7 @@
             // 
             this.btnImport.Enabled = true;
             this.btnImport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnImport.Location = new System.Drawing.Point(120, 235);
+            this.btnImport.Location = new System.Drawing.Point(120, 210);
             this.btnImport.Name = "btnImport";
             this.btnImport.Size = new System.Drawing.Size(80, 25);
             this.btnImport.TabIndex = 18;
@@ -302,7 +302,7 @@
             this.lstRecordedKeys.ItemHeight = 16;
             this.lstRecordedKeys.Location = new System.Drawing.Point(30, 100);
             this.lstRecordedKeys.Name = "lstRecordedKeys";
-            this.lstRecordedKeys.Size = new System.Drawing.Size(390, 148);
+            this.lstRecordedKeys.Size = new System.Drawing.Size(390, 120);
             this.lstRecordedKeys.TabIndex = 14;
             // 
             // lblRecordedKeys

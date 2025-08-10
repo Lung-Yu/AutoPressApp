@@ -121,6 +121,14 @@ namespace AutoPressApp
             hookProc = HookCallback;
             InstallGlobalHook();
             
+            // 檢查測試模式 checkbox 是否存在
+            UpdateStatus($"[INIT] chkTestMode 控制項: {(chkTestMode != null ? "存在" : "不存在")}");
+            if (chkTestMode != null)
+            {
+                UpdateStatus($"[INIT] chkTestMode 位置: ({chkTestMode.Left}, {chkTestMode.Top}), 大小: {chkTestMode.Width}x{chkTestMode.Height}");
+                UpdateStatus($"[INIT] chkTestMode 可見: {chkTestMode.Visible}, 啟用: {chkTestMode.Enabled}");
+            }
+            
             // 更新標籤顯示模式
             // 原 lblKey / 單鍵 UI 已移除
 
@@ -244,55 +252,66 @@ namespace AutoPressApp
 
     private void ReplayTimer_Tick(object sender, EventArgs e)
         {
-            if (!isReplaying) { replayTimer.Stop(); return; }
-            if (replayIndex >= recordedKeys.Count)
+            UpdateStatus($"[TIMER] ReplayTimer_Tick 觸發, replayIndex={replayIndex}, recordedKeys.Count={recordedKeys.Count}");
+            
+            if (!isReplaying || replayIndex >= recordedKeys.Count)
             {
-                if (LoopPlayback && recordedKeys.Count > 0)
-                {
-                    replayIndex = 0; // 重頭
-            int firstDelay = recordedKeys[0].DelayMs <= 0 ? 30 : recordedKeys[0].DelayMs;
-            replayTimer.Interval = (int)Math.Max(1, firstDelay * delayMultiplier);
-                    UpdateStatus($"循環回放重新開始 (共 {recordedKeys.Count} 按鍵)");
-                    return; // 等下一輪 tick
-                }
-                // 單次結束
+                // 結束回放
+                UpdateStatus($"[TIMER] 回放結束條件: isReplaying={isReplaying}, replayIndex={replayIndex}");
                 replayTimer.Stop();
                 isReplaying = false;
                 btnReplay.Text = "回放記錄";
                 btnReplay.Enabled = true;
-                UpdateStatus("回放完成 (單次)");
-                replayIndex = 0;
+                UpdateStatus("回放完成");
                 return;
             }
             
             var record = recordedKeys[replayIndex];
-            
-            // 發送按鍵到目標視窗
             bool testMode = chkTestMode != null && chkTestMode.Checked;
-            if (!testMode)
+            
+            UpdateStatus($"[TIMER] 處理第 {replayIndex + 1} 個按鍵: {record.Key}, 測試模式: {testMode}");
+            
+            if (testMode)
             {
+                // 測試模式：寫入測試框
+                if (txtTest != null)
+                {
+                    txtTest.AppendText(record.Key + " ");
+                    UpdateStatus($"[TEST] 已寫入測試框: {record.Key}");
+                }
+                else
+                {
+                    UpdateStatus("[TEST] 錯誤: txtTest 控制項不存在");
+                }
+                UpdateStatus($"[測試模式] 已輸出: {record.Key} ({replayIndex + 1}/{recordedKeys.Count})");
+            }
+            else
+            {
+                // 正常模式：發送按鍵
                 if (targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle))
                 {
+                    UpdateStatus($"[NORMAL] 設定目標視窗: {targetWindowHandle}");
                     SetForegroundWindow(targetWindowHandle);
                     ShowWindow(targetWindowHandle, SW_RESTORE);
                     System.Threading.Thread.Sleep(30);
                 }
+                else
+                {
+                    UpdateStatus("[NORMAL] 使用當前焦點視窗");
+                }
                 SendKeyPress(record.Key);
+                UpdateStatus($"[正常模式] 已發送: {record.Key} ({replayIndex + 1}/{recordedKeys.Count})");
             }
-            // 測試模式：僅寫入測試框，不實際送出
-            if (testMode && txtTest != null)
-            {
-                txtTest.AppendText(record.Key + " ");
-            }
-            UpdateStatus($"回放按鍵 {replayIndex + 1}/{recordedKeys.Count}: {record.Key}");
             
             replayIndex++;
             
-            // 設定下一個按鍵的延遲
+            // 設定下一個按鍵的間隔
             if (replayIndex < recordedKeys.Count)
             {
-                int next = (int)(recordedKeys[replayIndex].DelayMs * delayMultiplier);
-                replayTimer.Interval = Math.Max(1, next);
+                int nextDelay = recordedKeys[replayIndex].DelayMs;
+                int actualDelay = Math.Max(100, nextDelay);
+                replayTimer.Interval = actualDelay;
+                UpdateStatus($"[TIMER] 下一個間隔: {actualDelay}ms (原始: {nextDelay}ms)");
             }
         }
 
@@ -348,6 +367,11 @@ namespace AutoPressApp
 
         private void SendKeyPress(Keys key)
         {
+            UpdateStatus($"[LOG] SendKeyPress 開始發送: {key}");
+            
+            // 取得正確的虛擬鍵碼
+            ushort virtualKey = GetVirtualKeyCode(key);
+            
             // 使用 SendInput 發送
             var inputs = new List<INPUT>();
             inputs.Add(new INPUT
@@ -357,7 +381,7 @@ namespace AutoPressApp
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)key,
+                        wVk = virtualKey,
                         wScan = 0,
                         dwFlags = 0,
                         time = 0,
@@ -372,7 +396,7 @@ namespace AutoPressApp
                 {
                     ki = new KEYBDINPUT
                     {
-                        wVk = (ushort)key,
+                        wVk = virtualKey,
                         wScan = 0,
                         dwFlags = KEYEVENTF_KEYUP,
                         time = 0,
@@ -380,7 +404,170 @@ namespace AutoPressApp
                     }
                 }
             });
-            SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+            
+            uint result = SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>());
+            UpdateStatus($"[LOG] SendInput 結果: {result} (應該為 {inputs.Count}), VK={virtualKey:X2}");
+            
+            if (result == 0)
+            {
+                int error = Marshal.GetLastWin32Error();
+                UpdateStatus($"[LOG] SendInput 失敗，錯誤代碼: {error}");
+            }
+        }
+
+        private ushort GetVirtualKeyCode(Keys key)
+        {
+            // 處理特殊按鍵的對應關係
+            switch (key)
+            {
+                case Keys.Space:
+                    return 0x20; // VK_SPACE
+                case Keys.Enter:
+                    return 0x0D; // VK_RETURN
+                case Keys.Escape:
+                    return 0x1B; // VK_ESCAPE
+                case Keys.Tab:
+                    return 0x09; // VK_TAB
+                case Keys.Back:
+                    return 0x08; // VK_BACK
+                case Keys.Delete:
+                    return 0x2E; // VK_DELETE
+                case Keys.Home:
+                    return 0x24; // VK_HOME
+                case Keys.End:
+                    return 0x23; // VK_END
+                case Keys.PageUp:
+                    return 0x21; // VK_PRIOR
+                case Keys.PageDown:
+                    return 0x22; // VK_NEXT
+                case Keys.Left:
+                    return 0x25; // VK_LEFT
+                case Keys.Up:
+                    return 0x26; // VK_UP
+                case Keys.Right:
+                    return 0x27; // VK_RIGHT
+                case Keys.Down:
+                    return 0x28; // VK_DOWN
+                case Keys.Insert:
+                    return 0x2D; // VK_INSERT
+                case Keys.F1:
+                    return 0x70; // VK_F1
+                case Keys.F2:
+                    return 0x71; // VK_F2
+                case Keys.F3:
+                    return 0x72; // VK_F3
+                case Keys.F4:
+                    return 0x73; // VK_F4
+                case Keys.F5:
+                    return 0x74; // VK_F5
+                case Keys.F6:
+                    return 0x75; // VK_F6
+                case Keys.F7:
+                    return 0x76; // VK_F7
+                case Keys.F8:
+                    return 0x77; // VK_F8
+                case Keys.F9:
+                    return 0x78; // VK_F9
+                case Keys.F10:
+                    return 0x79; // VK_F10
+                case Keys.F11:
+                    return 0x7A; // VK_F11
+                case Keys.F12:
+                    return 0x7B; // VK_F12
+                // 修飾鍵
+                case Keys.LShiftKey:
+                case Keys.RShiftKey:
+                case Keys.ShiftKey:
+                    return 0x10; // VK_SHIFT
+                case Keys.LControlKey:
+                case Keys.RControlKey:
+                case Keys.ControlKey:
+                    return 0x11; // VK_CONTROL
+                case Keys.LMenu:
+                case Keys.RMenu:
+                case Keys.Menu:
+                    return 0x12; // VK_MENU (Alt)
+                case Keys.LWin:
+                case Keys.RWin:
+                    return 0x5B; // VK_LWIN
+                // 數字鍵
+                case Keys.D0:
+                    return 0x30;
+                case Keys.D1:
+                    return 0x31;
+                case Keys.D2:
+                    return 0x32;
+                case Keys.D3:
+                    return 0x33;
+                case Keys.D4:
+                    return 0x34;
+                case Keys.D5:
+                    return 0x35;
+                case Keys.D6:
+                    return 0x36;
+                case Keys.D7:
+                    return 0x37;
+                case Keys.D8:
+                    return 0x38;
+                case Keys.D9:
+                    return 0x39;
+                // 字母鍵 A-Z
+                case Keys.A:
+                    return 0x41;
+                case Keys.B:
+                    return 0x42;
+                case Keys.C:
+                    return 0x43;
+                case Keys.D:
+                    return 0x44;
+                case Keys.E:
+                    return 0x45;
+                case Keys.F:
+                    return 0x46;
+                case Keys.G:
+                    return 0x47;
+                case Keys.H:
+                    return 0x48;
+                case Keys.I:
+                    return 0x49;
+                case Keys.J:
+                    return 0x4A;
+                case Keys.K:
+                    return 0x4B;
+                case Keys.L:
+                    return 0x4C;
+                case Keys.M:
+                    return 0x4D;
+                case Keys.N:
+                    return 0x4E;
+                case Keys.O:
+                    return 0x4F;
+                case Keys.P:
+                    return 0x50;
+                case Keys.Q:
+                    return 0x51;
+                case Keys.R:
+                    return 0x52;
+                case Keys.S:
+                    return 0x53;
+                case Keys.T:
+                    return 0x54;
+                case Keys.U:
+                    return 0x55;
+                case Keys.V:
+                    return 0x56;
+                case Keys.W:
+                    return 0x57;
+                case Keys.X:
+                    return 0x58;
+                case Keys.Y:
+                    return 0x59;
+                case Keys.Z:
+                    return 0x5A;
+                default:
+                    // 對於其他按鍵，使用原本的轉換方式
+                    return (ushort)key;
+            }
         }
 
         private void UpdateStatus(string message)
@@ -391,6 +578,7 @@ namespace AutoPressApp
 
         private void btnStart_Click(object sender, EventArgs e)
         {
+            UpdateStatus($"[LOG] btnStart_Click: isRunning={isRunning}");
             if (!isRunning)
             {
                 BeginSequenceIfPossible();
@@ -404,6 +592,7 @@ namespace AutoPressApp
 
         private void BeginSequenceIfPossible()
         {
+            UpdateStatus("[LOG] BeginSequenceIfPossible 開始");
             if (recordedKeys.Count == 0)
             {
                 MessageBox.Show("尚未記錄任何按鍵，請先使用『開始記錄』功能。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -427,49 +616,14 @@ namespace AutoPressApp
             if (btnStart != null) btnStart.Text = "停止";
 
             bool testMode = chkTestMode != null && chkTestMode.Checked;
+            UpdateStatus($"[LOG] 準備開始回放，測試模式: {testMode}，目標: {targetWindowTitle}");
 
-            // 立即處理第一個按鍵（若其延遲為0），否則依延遲排程
-            replayTimer.Stop();
-            if (recordedKeys.Count > 0)
-            {
-                var first = recordedKeys[0];
-                if (first.DelayMs == 0)
-                {
-                    if (testMode)
-                    {
-                        if (txtTest != null) txtTest.AppendText(first.Key + " ");
-                    }
-                    else
-                    {
-                        if (targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle))
-                        {
-                            SetForegroundWindow(targetWindowHandle);
-                            ShowWindow(targetWindowHandle, SW_RESTORE);
-                            System.Threading.Thread.Sleep(10);
-                        }
-                        SendKeyPress(first.Key);
-                    }
-                    replayIndex = 1; // 已處理第一個
-                }
-                int nextDelay;
-                if (replayIndex < recordedKeys.Count)
-                {
-                    // 下一個按鍵的 delay 以其紀錄的 DelayMs (原指該鍵與前一鍵間隔)
-                    nextDelay = recordedKeys[replayIndex].DelayMs;
-                    if (replayIndex == 1 && first.DelayMs == 0)
-                    {
-                        // 已經立即送出第一鍵，此時 recordedKeys[1].DelayMs 仍是它與第一鍵的間隔，直接使用即可
-                    }
-                }
-                else
-                {
-                    // 只有一個按鍵
-                    nextDelay = 500; // fallback
-                }
-                replayTimer.Interval = Math.Max(1, (int)(nextDelay * delayMultiplier));
-                replayTimer.Start();
-            }
-            UpdateStatus($"開始回放記錄序列{(testMode ? " (測試模式: 只顯示)" : "")}，共 {recordedKeys.Count} 個按鍵 → 目標: {(testMode ? "(不送出)" : targetWindowTitle)}");
+            // 簡單的開始邏輯
+            int firstDelay = recordedKeys[0].DelayMs <= 0 ? 100 : recordedKeys[0].DelayMs;
+            replayTimer.Interval = firstDelay;
+            replayTimer.Start();
+            
+            UpdateStatus($"[LOG] 定時器已啟動，間隔: {replayTimer.Interval}ms，啟用: {replayTimer.Enabled}");
 
             if (btnRecord != null) btnRecord.Enabled = false;
             if (btnReplay != null) btnReplay.Enabled = false;
@@ -523,10 +677,33 @@ namespace AutoPressApp
 
         private void btnReplay_Click(object sender, EventArgs e)
         {
+            UpdateStatus("[BUTTON] btnReplay_Click 被點擊");
+            
+            // 確保不在記錄模式
+            if (isRecording)
+            {
+                UpdateStatus("[BUTTON] 停止記錄模式");
+                isRecording = false;
+                btnRecord.Text = "開始記錄";
+                btnRecord.BackColor = SystemColors.Control;
+                btnRecord.ForeColor = SystemColors.ControlText;
+            }
+            
             if (recordedKeys.Count == 0)
             {
-                MessageBox.Show("沒有記錄的按鍵可以回放！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                UpdateStatus("[BUTTON] 沒有記錄的按鍵");
+                MessageBox.Show("沒有記錄的按鍵可以回放！請先記錄一些按鍵。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
+            }
+            
+            UpdateStatus($"[BUTTON] 準備回放 {recordedKeys.Count} 個按鍵");
+            
+            // 檢查測試模式狀態
+            bool testMode = chkTestMode != null && chkTestMode.Checked;
+            UpdateStatus($"[BUTTON] 測試模式檢查: chkTestMode={chkTestMode != null}, Checked={testMode}");
+            if (chkTestMode != null)
+            {
+                UpdateStatus($"[BUTTON] chkTestMode 詳細: Visible={chkTestMode.Visible}, Enabled={chkTestMode.Enabled}, Text='{chkTestMode.Text}'");
             }
             
             // 獲取目標視窗
@@ -534,49 +711,29 @@ namespace AutoPressApp
             {
                 targetWindowHandle = app.WindowHandle;
                 targetWindowTitle = app.WindowTitle;
+                UpdateStatus($"[BUTTON] 目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
             }
             else
             {
                 targetWindowHandle = IntPtr.Zero;
                 targetWindowTitle = "當前焦點視窗";
+                UpdateStatus("[BUTTON] 使用當前焦點視窗");
             }
             
-                // 單次回放使用與 BeginSequenceIfPossible 類似流程，但不改變 isRunning
-                replayIndex = 0;
-                isReplaying = true;
-                btnReplay.Text = "回放中...";
-                btnReplay.Enabled = false;
-                bool testMode = chkTestMode != null && chkTestMode.Checked;
-                replayTimer.Stop();
-                if (recordedKeys[0].DelayMs == 0)
-                {
-                    // 立即發送第一鍵
-                    if (testMode)
-                    {
-                        if (txtTest != null) txtTest.AppendText(recordedKeys[0].Key + " ");
-                    }
-                    else
-                    {
-                        if (targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle))
-                        {
-                            SetForegroundWindow(targetWindowHandle);
-                            ShowWindow(targetWindowHandle, SW_RESTORE);
-                            System.Threading.Thread.Sleep(10);
-                        }
-                        SendKeyPress(recordedKeys[0].Key);
-                    }
-                    replayIndex = 1;
-                }
-                int delay = 500;
-                if (replayIndex < recordedKeys.Count)
-                {
-                    delay = recordedKeys[replayIndex].DelayMs;
-                }
-                replayTimer.Interval = Math.Max(1, (int)(delay * delayMultiplier));
-                replayTimer.Start();
-                var testSuffix = testMode ? " (測試模式: 只顯示)" : string.Empty;
-                var targetLabel = testMode ? "(不送出)" : targetWindowTitle;
-                UpdateStatus($"開始回放{testSuffix} 到 [{targetLabel}]，共 {recordedKeys.Count} 個按鍵");
+            // 開始簡單的單次回放
+            replayIndex = 0;
+            isReplaying = true;
+            btnReplay.Text = "回放中...";
+            btnReplay.Enabled = false;
+            
+            UpdateStatus($"[BUTTON] 設定回放狀態: replayIndex={replayIndex}, isReplaying={isReplaying}");
+            
+            // 使用簡單的定時器邏輯
+            replayTimer.Interval = 100; // 100ms後開始第一個按鍵
+            replayTimer.Start();
+            
+            UpdateStatus($"[BUTTON] 定時器已啟動: Interval={replayTimer.Interval}ms, Enabled={replayTimer.Enabled}");
+            UpdateStatus($"開始回放，共 {recordedKeys.Count} 個按鍵");
         }
 
         private void btnClearRecord_Click(object sender, EventArgs e)
