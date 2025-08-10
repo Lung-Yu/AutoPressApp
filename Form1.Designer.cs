@@ -226,7 +226,7 @@
             this.groupBoxHelp.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.groupBoxHelp.Location = new System.Drawing.Point(30, 490);
             this.groupBoxHelp.Name = "groupBoxHelp";
-            this.groupBoxHelp.Size = new System.Drawing.Size(620, 180);
+            this.groupBoxHelp.Size = new System.Drawing.Size(620, 160);
             this.groupBoxHelp.TabIndex = 17;
             this.groupBoxHelp.TabStop = false;
             this.groupBoxHelp.Text = "使用說明 / 熱鍵";
@@ -238,7 +238,7 @@
             this.groupBoxTest.Controls.Add(this.btnClearTest);
             this.groupBoxTest.Controls.Add(this.txtTest);
             this.groupBoxTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.groupBoxTest.Location = new System.Drawing.Point(30, 680);
+            this.groupBoxTest.Location = new System.Drawing.Point(30, 670);
             this.groupBoxTest.Name = "groupBoxTest";
             this.groupBoxTest.Size = new System.Drawing.Size(620, 140);
             this.groupBoxTest.TabIndex = 21;
@@ -275,7 +275,7 @@
             this.rtbHelp.Location = new System.Drawing.Point(15, 22);
             this.rtbHelp.Name = "rtbHelp";
             this.rtbHelp.ReadOnly = true;
-            this.rtbHelp.Size = new System.Drawing.Size(590, 145);
+            this.rtbHelp.Size = new System.Drawing.Size(590, 125);
             this.rtbHelp.TabIndex = 0;
             this.rtbHelp.Text = "";
             this.rtbHelp.BackColor = System.Drawing.SystemColors.Window;
