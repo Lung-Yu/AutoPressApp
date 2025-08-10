@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.btnStart = new System.Windows.Forms.Button();
+            this.lblStartInfo = new System.Windows.Forms.Label();
             // 移除單鍵/間隔相關控制項
             this.lblStatus = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -60,14 +61,28 @@
             // 
             // btnStart
             // 
-            this.btnStart.Font = new System.Drawing.Font("Microsoft JhengHei", 12F, System.Drawing.FontStyle.Bold);
-            this.btnStart.Location = new System.Drawing.Point(30, 500);
+            this.btnStart.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(120)))), ((int)(((byte)(215)))));
+            this.btnStart.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnStart.Font = new System.Drawing.Font("Microsoft JhengHei", 14F, System.Drawing.FontStyle.Bold);
+            this.btnStart.ForeColor = System.Drawing.Color.White;
+            this.btnStart.Location = new System.Drawing.Point(500, 50);
             this.btnStart.Name = "btnStart";
-            this.btnStart.Size = new System.Drawing.Size(100, 40);
+            this.btnStart.Size = new System.Drawing.Size(150, 50);
             this.btnStart.TabIndex = 0;
-            this.btnStart.Text = "開始";
-            this.btnStart.UseVisualStyleBackColor = true;
+            this.btnStart.Text = "▶ 開始執行";
+            this.btnStart.UseVisualStyleBackColor = false;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
+            // 
+            // lblStartInfo
+            // 
+            this.lblStartInfo.AutoSize = true;
+            this.lblStartInfo.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
+            this.lblStartInfo.ForeColor = System.Drawing.Color.DarkBlue;
+            this.lblStartInfo.Location = new System.Drawing.Point(500, 25);
+            this.lblStartInfo.Name = "lblStartInfo";
+            this.lblStartInfo.Size = new System.Drawing.Size(150, 18);
+            this.lblStartInfo.TabIndex = 25;
+            this.lblStartInfo.Text = "執行已記錄的按鍵序列";
             // 
             // 
             // lblStatus
@@ -330,11 +345,12 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(520, 860);
+            this.ClientSize = new System.Drawing.Size(680, 860);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.btnStart);
+            this.Controls.Add(this.lblStartInfo);
+            this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.groupBoxHelp);
             this.Controls.Add(this.groupBoxTest);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -357,6 +373,7 @@
         #endregion
 
         private System.Windows.Forms.Button btnStart;
+        private System.Windows.Forms.Label lblStartInfo;
     // 已移除單鍵與間隔控制項
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.GroupBox groupBox1;
