@@ -29,10 +29,7 @@
         private void InitializeComponent()
         {
             this.btnStart = new System.Windows.Forms.Button();
-            this.cmbKeys = new System.Windows.Forms.ComboBox();
-            this.lblKey = new System.Windows.Forms.Label();
-            this.lblInterval = new System.Windows.Forms.Label();
-            this.numInterval = new System.Windows.Forms.NumericUpDown();
+            // 移除單鍵/間隔相關控制項
             this.lblStatus = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.cmbApplications = new System.Windows.Forms.ComboBox();
@@ -45,9 +42,19 @@
             this.lstRecordedKeys = new System.Windows.Forms.ListBox();
             this.lblRecordedKeys = new System.Windows.Forms.Label();
             this.chkLoop = new System.Windows.Forms.CheckBox();
-            ((System.ComponentModel.ISupportInitialize)(this.numInterval)).BeginInit();
+            this.btnExport = new System.Windows.Forms.Button();
+            this.btnImport = new System.Windows.Forms.Button();
+            this.cmbSpeed = new System.Windows.Forms.ComboBox();
+            this.lblSpeed = new System.Windows.Forms.Label();
+            this.groupBoxHelp = new System.Windows.Forms.GroupBox();
+            this.rtbHelp = new System.Windows.Forms.RichTextBox();
+            this.groupBoxTest = new System.Windows.Forms.GroupBox();
+            this.txtTest = new System.Windows.Forms.TextBox();
+            this.btnClearTest = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
+            this.groupBoxHelp.SuspendLayout();
+            this.groupBoxTest.SuspendLayout();
             this.SuspendLayout();
             // 
             // btnStart
@@ -61,79 +68,6 @@
             this.btnStart.UseVisualStyleBackColor = true;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
             // 
-            // cmbKeys
-            // 
-            this.cmbKeys.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.cmbKeys.FormattingEnabled = true;
-            this.cmbKeys.Items.AddRange(new object[] {
-            "F1",
-            "F2",
-            "F3",
-            "F4",
-            "F5",
-            "Space",
-            "Enter",
-            "A",
-            "B",
-            "C",
-            "D",
-            "E"});
-            this.cmbKeys.Location = new System.Drawing.Point(100, 30);
-            this.cmbKeys.Name = "cmbKeys";
-            this.cmbKeys.Size = new System.Drawing.Size(121, 25);
-            this.cmbKeys.TabIndex = 1;
-            this.cmbKeys.SelectedIndex = 0;
-            // 
-            // lblKey
-            // 
-            this.lblKey.AutoSize = true;
-            this.lblKey.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.lblKey.Location = new System.Drawing.Point(30, 33);
-            this.lblKey.Name = "lblKey";
-            this.lblKey.Size = new System.Drawing.Size(65, 18);
-            this.lblKey.TabIndex = 2;
-            this.lblKey.Text = "選擇按鍵:";
-            // 
-            // lblInterval
-            // 
-            this.lblInterval.AutoSize = true;
-            this.lblInterval.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.lblInterval.Location = new System.Drawing.Point(30, 73);
-            this.lblInterval.Name = "lblInterval";
-            this.lblInterval.Size = new System.Drawing.Size(65, 18);
-            this.lblInterval.TabIndex = 3;
-            this.lblInterval.Text = "間隔(秒):";
-            // 
-            // numInterval
-            // 
-            this.numInterval.DecimalPlaces = 1;
-            this.numInterval.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.numInterval.Increment = new decimal(new int[] {
-            1,
-            0,
-            0,
-            65536});
-            this.numInterval.Location = new System.Drawing.Point(100, 70);
-            this.numInterval.Maximum = new decimal(new int[] {
-            60,
-            0,
-            0,
-            0});
-            this.numInterval.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            65536});
-            this.numInterval.Name = "numInterval";
-            this.numInterval.Size = new System.Drawing.Size(120, 25);
-            this.numInterval.TabIndex = 4;
-            this.numInterval.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.numInterval.ValueChanged += new System.EventHandler(this.numInterval_ValueChanged);
             // 
             // lblStatus
             // 
@@ -151,17 +85,26 @@
             this.groupBox1.Controls.Add(this.btnRefresh);
             this.groupBox1.Controls.Add(this.lblApplication);
             this.groupBox1.Controls.Add(this.cmbApplications);
-            this.groupBox1.Controls.Add(this.lblKey);
-            this.groupBox1.Controls.Add(this.cmbKeys);
-            this.groupBox1.Controls.Add(this.lblInterval);
-            this.groupBox1.Controls.Add(this.numInterval);
+            this.groupBox1.Controls.Add(this.chkTestMode);
             this.groupBox1.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox1.Location = new System.Drawing.Point(30, 30);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(450, 160);
             this.groupBox1.TabIndex = 6;
             this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "基本設定";
+            this.groupBox1.Text = "基本設定 (僅視窗目標)";
+            // 
+            // chkTestMode
+            // 
+            this.chkTestMode = new System.Windows.Forms.CheckBox();
+            this.chkTestMode.AutoSize = true;
+            this.chkTestMode.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.chkTestMode.Location = new System.Drawing.Point(30, 30);
+            this.chkTestMode.Name = "chkTestMode";
+            this.chkTestMode.Size = new System.Drawing.Size(87, 20);
+            this.chkTestMode.TabIndex = 10;
+            this.chkTestMode.Text = "測試模式";
+            this.chkTestMode.UseVisualStyleBackColor = true;
             // 
             // cmbApplications
             // 
@@ -202,6 +145,10 @@
             this.groupBox2.Controls.Add(this.btnReplay);
             this.groupBox2.Controls.Add(this.btnRecord);
             this.groupBox2.Controls.Add(this.chkLoop);
+            this.groupBox2.Controls.Add(this.btnExport);
+            this.groupBox2.Controls.Add(this.btnImport);
+            this.groupBox2.Controls.Add(this.cmbSpeed);
+            this.groupBox2.Controls.Add(this.lblSpeed);
             this.groupBox2.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox2.Location = new System.Drawing.Point(30, 210);
             this.groupBox2.Name = "groupBox2";
@@ -209,6 +156,109 @@
             this.groupBox2.TabIndex = 10;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "按鍵記錄與回放";
+            // 
+            // btnExport
+            // 
+            this.btnExport.Enabled = true;
+            this.btnExport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnExport.Location = new System.Drawing.Point(30, 235);
+            this.btnExport.Name = "btnExport";
+            this.btnExport.Size = new System.Drawing.Size(80, 25);
+            this.btnExport.TabIndex = 17;
+            this.btnExport.Text = "匯出";
+            this.btnExport.UseVisualStyleBackColor = true;
+            this.btnExport.Click += new System.EventHandler(this.btnExport_Click);
+            // 
+            // btnImport
+            // 
+            this.btnImport.Enabled = true;
+            this.btnImport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnImport.Location = new System.Drawing.Point(120, 235);
+            this.btnImport.Name = "btnImport";
+            this.btnImport.Size = new System.Drawing.Size(80, 25);
+            this.btnImport.TabIndex = 18;
+            this.btnImport.Text = "匯入";
+            this.btnImport.UseVisualStyleBackColor = true;
+            this.btnImport.Click += new System.EventHandler(this.btnImport_Click);
+            // 
+            // cmbSpeed
+            // 
+            this.cmbSpeed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.cmbSpeed.FormattingEnabled = true;
+            this.cmbSpeed.Items.AddRange(new object[] {"0.5x","1.0x","1.5x","2.0x"});
+            this.cmbSpeed.Location = new System.Drawing.Point(330, 235);
+            this.cmbSpeed.Name = "cmbSpeed";
+            this.cmbSpeed.Size = new System.Drawing.Size(90, 24);
+            this.cmbSpeed.TabIndex = 19;
+            this.cmbSpeed.SelectedIndex = 1; // default 1.0x
+            this.cmbSpeed.SelectedIndexChanged += new System.EventHandler(this.cmbSpeed_SelectedIndexChanged);
+            // 
+            // lblSpeed
+            // 
+            this.lblSpeed.AutoSize = true;
+            this.lblSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.lblSpeed.Location = new System.Drawing.Point(250, 239);
+            this.lblSpeed.Name = "lblSpeed";
+            this.lblSpeed.Size = new System.Drawing.Size(79, 16);
+            this.lblSpeed.TabIndex = 20;
+            this.lblSpeed.Text = "速度倍率:";
+            // 
+            // groupBoxHelp
+            // 
+            this.groupBoxHelp.Controls.Add(this.rtbHelp);
+            this.groupBoxHelp.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.groupBoxHelp.Location = new System.Drawing.Point(30, 490);
+            this.groupBoxHelp.Name = "groupBoxHelp";
+            this.groupBoxHelp.Size = new System.Drawing.Size(450, 180);
+            this.groupBoxHelp.TabIndex = 17;
+            this.groupBoxHelp.TabStop = false;
+            this.groupBoxHelp.Text = "使用說明 / 熱鍵";
+            // 
+            // groupBoxTest
+            // 
+            this.groupBoxTest.Controls.Add(this.btnClearTest);
+            this.groupBoxTest.Controls.Add(this.txtTest);
+            this.groupBoxTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.groupBoxTest.Location = new System.Drawing.Point(30, 680);
+            this.groupBoxTest.Name = "groupBoxTest";
+            this.groupBoxTest.Size = new System.Drawing.Size(450, 140);
+            this.groupBoxTest.TabIndex = 21;
+            this.groupBoxTest.TabStop = false;
+            this.groupBoxTest.Text = "測試輸入 (啟用測試模式時回放寫入此框)";
+            // 
+            // txtTest
+            // 
+            this.txtTest.Font = new System.Drawing.Font("Consolas", 10F);
+            this.txtTest.Location = new System.Drawing.Point(15, 22);
+            this.txtTest.Multiline = true;
+            this.txtTest.Name = "txtTest";
+            this.txtTest.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            this.txtTest.Size = new System.Drawing.Size(420, 80);
+            this.txtTest.TabIndex = 0;
+            // 
+            // btnClearTest
+            // 
+            this.btnClearTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnClearTest.Location = new System.Drawing.Point(355, 108);
+            this.btnClearTest.Name = "btnClearTest";
+            this.btnClearTest.Size = new System.Drawing.Size(80, 25);
+            this.btnClearTest.TabIndex = 1;
+            this.btnClearTest.Text = "清除";
+            this.btnClearTest.UseVisualStyleBackColor = true;
+            this.btnClearTest.Click += new System.EventHandler(this.btnClearTest_Click);
+            // rtbHelp
+            // 
+            this.rtbHelp.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.rtbHelp.Location = new System.Drawing.Point(15, 22);
+            this.rtbHelp.Name = "rtbHelp";
+            this.rtbHelp.ReadOnly = true;
+            this.rtbHelp.Size = new System.Drawing.Size(420, 145);
+            this.rtbHelp.TabIndex = 0;
+            this.rtbHelp.Text = "";
+            this.rtbHelp.BackColor = System.Drawing.SystemColors.Window;
+            this.rtbHelp.DetectUrls = false;
+            this.rtbHelp.ShortcutsEnabled = false;
             // 
             // btnRecord
             // 
@@ -280,21 +330,25 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(520, 600);
+            this.ClientSize = new System.Drawing.Size(520, 860);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.btnStart);
+            this.Controls.Add(this.groupBoxHelp);
+            this.Controls.Add(this.groupBoxTest);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "自動按鍵程式 - Auto Press v2.0";
-            ((System.ComponentModel.ISupportInitialize)(this.numInterval)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
+            this.groupBoxHelp.ResumeLayout(false);
+            this.groupBoxTest.ResumeLayout(false);
+            this.groupBoxTest.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -303,10 +357,7 @@
         #endregion
 
         private System.Windows.Forms.Button btnStart;
-        private System.Windows.Forms.ComboBox cmbKeys;
-        private System.Windows.Forms.Label lblKey;
-        private System.Windows.Forms.Label lblInterval;
-        private System.Windows.Forms.NumericUpDown numInterval;
+    // 已移除單鍵與間隔控制項
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.ComboBox cmbApplications;
@@ -319,6 +370,16 @@
         private System.Windows.Forms.ListBox lstRecordedKeys;
         private System.Windows.Forms.Label lblRecordedKeys;
     private System.Windows.Forms.CheckBox chkLoop;
+    private System.Windows.Forms.GroupBox groupBoxHelp;
+    private System.Windows.Forms.RichTextBox rtbHelp;
+    private System.Windows.Forms.Button btnExport;
+    private System.Windows.Forms.Button btnImport;
+    private System.Windows.Forms.ComboBox cmbSpeed;
+    private System.Windows.Forms.Label lblSpeed;
+    private System.Windows.Forms.GroupBox groupBoxTest;
+    private System.Windows.Forms.TextBox txtTest;
+    private System.Windows.Forms.Button btnClearTest;
+    private System.Windows.Forms.CheckBox chkTestMode;
     }
 }
 
