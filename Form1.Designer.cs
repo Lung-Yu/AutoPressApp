@@ -65,7 +65,7 @@
             this.btnStart.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnStart.Font = new System.Drawing.Font("Microsoft JhengHei", 14F, System.Drawing.FontStyle.Bold);
             this.btnStart.ForeColor = System.Drawing.Color.White;
-            this.btnStart.Location = new System.Drawing.Point(500, 50);
+            this.btnStart.Location = new System.Drawing.Point(500, 150);
             this.btnStart.Name = "btnStart";
             this.btnStart.Size = new System.Drawing.Size(150, 50);
             this.btnStart.TabIndex = 0;
@@ -78,7 +78,7 @@
             this.lblStartInfo.AutoSize = true;
             this.lblStartInfo.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.lblStartInfo.ForeColor = System.Drawing.Color.DarkBlue;
-            this.lblStartInfo.Location = new System.Drawing.Point(500, 25);
+            this.lblStartInfo.Location = new System.Drawing.Point(500, 120);
             this.lblStartInfo.Name = "lblStartInfo";
             this.lblStartInfo.Size = new System.Drawing.Size(150, 18);
             this.lblStartInfo.TabIndex = 25;
@@ -120,6 +120,7 @@
             this.chkTestMode.TabIndex = 10;
             this.chkTestMode.Text = "測試模式";
             this.chkTestMode.UseVisualStyleBackColor = true;
+            this.chkTestMode.Visible = true;
             // 
             // cmbApplications
             // 
@@ -201,12 +202,12 @@
             this.cmbSpeed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.cmbSpeed.FormattingEnabled = true;
-            this.cmbSpeed.Items.AddRange(new object[] {"0.5x","1.0x","1.5x","2.0x"});
+            this.cmbSpeed.Items.AddRange(new object[] {"0.05x","0.1x","0.2x","0.5x","1.0x","1.5x","2.0x"});
             this.cmbSpeed.Location = new System.Drawing.Point(330, 235);
             this.cmbSpeed.Name = "cmbSpeed";
             this.cmbSpeed.Size = new System.Drawing.Size(90, 24);
             this.cmbSpeed.TabIndex = 19;
-            this.cmbSpeed.SelectedIndex = 1; // default 1.0x
+            this.cmbSpeed.SelectedIndex = 4; // default 1.0x
             this.cmbSpeed.SelectedIndexChanged += new System.EventHandler(this.cmbSpeed_SelectedIndexChanged);
             // 
             // lblSpeed
@@ -225,37 +226,43 @@
             this.groupBoxHelp.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.groupBoxHelp.Location = new System.Drawing.Point(30, 490);
             this.groupBoxHelp.Name = "groupBoxHelp";
-            this.groupBoxHelp.Size = new System.Drawing.Size(450, 180);
+            this.groupBoxHelp.Size = new System.Drawing.Size(620, 180);
             this.groupBoxHelp.TabIndex = 17;
             this.groupBoxHelp.TabStop = false;
             this.groupBoxHelp.Text = "使用說明 / 熱鍵";
             // 
             // groupBoxTest
             // 
+            this.groupBoxTest.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBoxTest.Controls.Add(this.btnClearTest);
             this.groupBoxTest.Controls.Add(this.txtTest);
             this.groupBoxTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.groupBoxTest.Location = new System.Drawing.Point(30, 680);
             this.groupBoxTest.Name = "groupBoxTest";
-            this.groupBoxTest.Size = new System.Drawing.Size(450, 140);
+            this.groupBoxTest.Size = new System.Drawing.Size(620, 140);
             this.groupBoxTest.TabIndex = 21;
             this.groupBoxTest.TabStop = false;
             this.groupBoxTest.Text = "測試輸入 (啟用測試模式時回放寫入此框)";
             // 
             // txtTest
             // 
+            this.txtTest.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtTest.Font = new System.Drawing.Font("Consolas", 10F);
             this.txtTest.Location = new System.Drawing.Point(15, 22);
             this.txtTest.Multiline = true;
             this.txtTest.Name = "txtTest";
             this.txtTest.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtTest.Size = new System.Drawing.Size(420, 80);
+            this.txtTest.Size = new System.Drawing.Size(590, 80);
             this.txtTest.TabIndex = 0;
             // 
             // btnClearTest
             // 
+            this.btnClearTest.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnClearTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnClearTest.Location = new System.Drawing.Point(355, 108);
+            this.btnClearTest.Location = new System.Drawing.Point(525, 108);
             this.btnClearTest.Name = "btnClearTest";
             this.btnClearTest.Size = new System.Drawing.Size(80, 25);
             this.btnClearTest.TabIndex = 1;
@@ -268,7 +275,7 @@
             this.rtbHelp.Location = new System.Drawing.Point(15, 22);
             this.rtbHelp.Name = "rtbHelp";
             this.rtbHelp.ReadOnly = true;
-            this.rtbHelp.Size = new System.Drawing.Size(420, 145);
+            this.rtbHelp.Size = new System.Drawing.Size(590, 145);
             this.rtbHelp.TabIndex = 0;
             this.rtbHelp.Text = "";
             this.rtbHelp.BackColor = System.Drawing.SystemColors.Window;
@@ -353,7 +360,7 @@
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.groupBoxHelp);
             this.Controls.Add(this.groupBoxTest);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
