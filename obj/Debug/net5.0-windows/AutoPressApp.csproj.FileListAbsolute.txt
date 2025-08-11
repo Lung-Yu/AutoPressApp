@@ -1,0 +1,16 @@
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.exe
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.deps.json
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.runtimeconfig.json
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.runtimeconfig.dev.json
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.dll
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\ref\AutoPressApp.dll
+D:\projects\auto_press\AutoPressApp\bin\Debug\net5.0-windows\AutoPressApp.pdb
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.csproj.AssemblyReference.cache
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.GeneratedMSBuildEditorConfig.editorconfig
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.AssemblyInfoInputs.cache
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.AssemblyInfo.cs
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.csproj.CoreCompileInputs.cache
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.dll
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\ref\AutoPressApp.dll
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.pdb
+D:\projects\auto_press\AutoPressApp\obj\Debug\net5.0-windows\AutoPressApp.genruntimeconfig.cache
