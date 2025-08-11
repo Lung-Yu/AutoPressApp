@@ -373,16 +373,19 @@ namespace AutoPressApp
             if (replayIndex < recordedKeys.Count)
             {
                 int nextDelay = recordedKeys[replayIndex].DelayMs;
-                int actualDelay = Math.Max(100, nextDelay);
+                int adjustedDelay = (int)(nextDelay / delayMultiplier); // 應用速度倍率
+                int actualDelay = Math.Max(50, adjustedDelay); // 最小50ms防止過快
                 replayTimer.Interval = actualDelay;
-                UpdateStatus($"[TIMER] 下一個間隔: {actualDelay}ms (原始: {nextDelay}ms)");
+                UpdateStatus($"[TIMER] 下一個間隔: {actualDelay}ms (原始: {nextDelay}ms, 倍率: {delayMultiplier}x)");
             }
             else if (LoopPlayback)
             {
                 // 循環模式：準備下一輪
                 int firstDelay = recordedKeys[0].DelayMs <= 0 ? 500 : recordedKeys[0].DelayMs; // 循環間隔稍長一點
-                replayTimer.Interval = firstDelay;
-                UpdateStatus($"[TIMER] 循環準備下一輪: {firstDelay}ms");
+                int adjustedDelay = (int)(firstDelay / delayMultiplier); // 應用速度倍率
+                int actualDelay = Math.Max(50, adjustedDelay);
+                replayTimer.Interval = actualDelay;
+                UpdateStatus($"[TIMER] 循環準備下一輪: {actualDelay}ms (原始: {firstDelay}ms, 倍率: {delayMultiplier}x)");
             }
         }
 
@@ -995,10 +998,12 @@ namespace AutoPressApp
 
             // 簡單的開始邏輯
             int firstDelay = recordedKeys[0].DelayMs <= 0 ? 100 : recordedKeys[0].DelayMs;
-            replayTimer.Interval = firstDelay;
+            int adjustedDelay = (int)(firstDelay / delayMultiplier); // 應用速度倍率
+            int actualDelay = Math.Max(50, adjustedDelay);
+            replayTimer.Interval = actualDelay;
             replayTimer.Start();
             
-            UpdateStatus($"[LOG] 定時器已啟動，間隔: {replayTimer.Interval}ms，啟用: {replayTimer.Enabled}");
+            UpdateStatus($"[LOG] 定時器已啟動，間隔: {replayTimer.Interval}ms (原始: {firstDelay}ms, 倍率: {delayMultiplier}x)，啟用: {replayTimer.Enabled}");
 
             if (btnRecord != null) btnRecord.Enabled = false;
             if (btnReplay != null) btnReplay.Enabled = false;
@@ -1156,10 +1161,13 @@ namespace AutoPressApp
             UpdateStatus($"[BUTTON] 最終目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
             
             // 使用簡單的定時器邏輯
-            replayTimer.Interval = 100; // 100ms後開始第一個按鍵
+            int initialDelay = 100; // 100ms後開始第一個按鍵
+            int adjustedDelay = (int)(initialDelay / delayMultiplier); // 應用速度倍率
+            int actualDelay = Math.Max(50, adjustedDelay);
+            replayTimer.Interval = actualDelay;
             replayTimer.Start();
             
-            UpdateStatus($"[BUTTON] 定時器已啟動: Interval={replayTimer.Interval}ms, Enabled={replayTimer.Enabled}");
+            UpdateStatus($"[BUTTON] 定時器已啟動: Interval={replayTimer.Interval}ms (倍率: {delayMultiplier}x), Enabled={replayTimer.Enabled}");
             UpdateStatus($"開始回放，共 {recordedKeys.Count} 個按鍵");
         }
 
@@ -1258,8 +1266,8 @@ namespace AutoPressApp
         {
             if (txt.EndsWith("x") && double.TryParse(txt.TrimEnd('x'), out var v))
             {
-                delayMultiplier = 1.0 / v; // 播放速度倍率 => 延遲縮放
-                UpdateStatus($"速度倍率設定: {txt}");
+                delayMultiplier = v; // 播放速度倍率：2.0x表示2倍速，0.5x表示半速
+                UpdateStatus($"速度倍率設定: {txt} (delayMultiplier={delayMultiplier})");
             }
         }
     }

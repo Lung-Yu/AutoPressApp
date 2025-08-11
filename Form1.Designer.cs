@@ -202,7 +202,7 @@
             this.cmbSpeed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.cmbSpeed.FormattingEnabled = true;
-            this.cmbSpeed.Items.AddRange(new object[] {"0.05x","0.1x","0.2x","0.5x","1.0x","1.5x","2.0x"});
+            this.cmbSpeed.Items.AddRange(new object[] {"0.05x","0.1x","0.2x","0.5x","1.0x","1.5x","2.0x","3.0x","4.0x","5.0x","6.0x","8.0x","10.0x"});
             this.cmbSpeed.Location = new System.Drawing.Point(330, 235);
             this.cmbSpeed.Name = "cmbSpeed";
             this.cmbSpeed.Size = new System.Drawing.Size(90, 24);
