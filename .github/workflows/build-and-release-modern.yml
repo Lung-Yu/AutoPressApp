@@ -1,60 +1,62 @@
 name: Build and Release AutoPressApp (Modern)
 
 on:
-	push:
-		tags:
-			- 'v*.*.*'
-	workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
-	build:
-		runs-on: windows-latest
-		permissions:
-			contents: write
-		steps:
-		- name: Checkout code
-			uses: actions/checkout@v4
-		- name: Setup .NET
-			uses: actions/setup-dotnet@v4
-			with:
-				dotnet-version: '5.0.x'
-		- name: Restore dependencies
-			run: dotnet restore ../AutoPressApp.csproj
-		- name: Build application
-			run: dotnet build ../AutoPressApp.csproj --configuration Release --no-restore
-		- name: Publish application
-			run: dotnet publish ../AutoPressApp.csproj --configuration Release --output ./publish --no-build --self-contained true --runtime win-x64
-		- name: Create zip archive
-			run: Compress-Archive -Path ./publish/* -DestinationPath ./AutoPressApp-win-x64.zip
-			shell: powershell
-		- name: Get version from tag
-			id: get_version
-			run: |
-				if ($env:GITHUB_REF -match "refs/tags/(.*)") {
-					$version = $matches[1]
-				} else {
-					$version = "dev-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-				}
-				echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-			shell: powershell
-		- name: Create Release and Upload Assets
-			uses: softprops/action-gh-release@v1
-			with:
-				tag_name: ${{ steps.get_version.outputs.VERSION }}
-				name: AutoPressApp ${{ steps.get_version.outputs.VERSION }}
-				body: |
-					## AutoPressApp Release ${{ steps.get_version.outputs.VERSION }}
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '5.0.x'
+    - name: Verify .NET installation
+      run: dotnet --info
+    - name: Restore dependencies
+      run: dotnet restore AutoPressApp.csproj --verbosity normal
+    - name: Build application
+      run: dotnet build AutoPressApp.csproj --configuration Release --no-restore --verbosity normal
+    - name: Publish application
+      run: dotnet publish AutoPressApp.csproj --configuration Release --output ./publish --no-build --self-contained true --runtime win-x64
+    - name: Create zip archive
+      run: Compress-Archive -Path ./publish/* -DestinationPath ./AutoPressApp-win-x64.zip
+      shell: powershell
+    - name: Get version from tag
+      id: get_version
+      run: |
+        if ($env:GITHUB_REF -match "refs/tags/(.*)") {
+          $version = $matches[1]
+        } else {
+          $version = "dev-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        }
+        echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+      shell: powershell
+    - name: Create Release and Upload Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        name: AutoPressApp ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## AutoPressApp Release ${{ steps.get_version.outputs.VERSION }}
           
-					### 下載說明
-					- 下載 `AutoPressApp-win-x64.zip` 檔案
-					- 解壓縮後執行 `AutoPressApp.exe`
+          ### 下載說明
+          - 下載 `AutoPressApp-win-x64.zip` 檔案
+          - 解壓縮後執行 `AutoPressApp.exe`
           
-					### 系統需求
-					- Windows 10 或更新版本
-					- x64 架構
+          ### 系統需求
+          - Windows 10 或更新版本
+          - x64 架構
           
-					此版本包含所有必要的運行時文件，無需額外安裝 .NET Framework。
-				files: |
-					AutoPressApp-win-x64.zip
-				draft: false
-				prerelease: false
+          此版本包含所有必要的運行時文件，無需額外安裝 .NET Framework。
+        files: |
+          AutoPressApp-win-x64.zip
+        draft: false
+        prerelease: false
