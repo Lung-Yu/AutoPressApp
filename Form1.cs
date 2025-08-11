@@ -118,7 +118,7 @@ namespace AutoPressApp
 
         private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
         
-    private Timer replayTimer = new Timer();
+    private System.Windows.Forms.Timer replayTimer = new System.Windows.Forms.Timer();
     private bool isRunning = false;
         private bool isRecording = false;
         private bool isReplaying = false; // 用於判斷目前是否在回放
