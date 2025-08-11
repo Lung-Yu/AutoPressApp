@@ -275,7 +275,7 @@ namespace AutoPressApp
             }
         }
 
-    private void ReplayTimer_Tick(object sender, EventArgs e)
+    private void ReplayTimer_Tick(object? sender, EventArgs e)
         {
             UpdateStatus($"[TIMER] ReplayTimer_Tick 觸發, replayIndex={replayIndex}, recordedKeys.Count={recordedKeys.Count}");
             
@@ -1180,7 +1180,7 @@ namespace AutoPressApp
             UpdateStatus("記錄已清除");
         }
 
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
         {
             if (keyboardHook != IntPtr.Zero)
             {

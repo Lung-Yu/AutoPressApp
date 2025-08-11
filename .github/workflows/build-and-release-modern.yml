@@ -27,7 +27,7 @@ jobs:
     - name: Build application
       run: dotnet build AutoPressApp.csproj --configuration Release --no-restore --verbosity normal
     - name: Publish application
-      run: dotnet publish AutoPressApp.csproj --configuration Release --output ./publish --no-build --self-contained true --runtime win-x64
+      run: dotnet publish AutoPressApp.csproj --configuration Release --output ./publish --self-contained true --runtime win-x64
     - name: Create zip archive
       run: Compress-Archive -Path ./publish/* -DestinationPath ./AutoPressApp-win-x64.zip
       shell: powershell
