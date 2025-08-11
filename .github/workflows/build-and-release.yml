@@ -26,6 +26,8 @@ jobs:
       run: dotnet restore AutoPressApp.csproj --verbosity normal
     - name: Build application
       run: dotnet build AutoPressApp.csproj --configuration Release --no-restore --verbosity normal
+    - name: Restore dependencies for publish
+      run: dotnet restore AutoPressApp.csproj --runtime win-x64
     - name: Publish application
       run: dotnet publish AutoPressApp.csproj --configuration Release --output ./publish --self-contained true --runtime win-x64
     - name: Create zip archive
