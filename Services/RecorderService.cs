@@ -216,6 +216,17 @@ namespace AutoPressApp.Services
 
         private bool _isCtrl, _isShift, _isAlt, _isWin;
 
+        // 內建程式控制用快捷鍵 (不應被錄製進流程)
+        private static readonly System.Collections.Generic.HashSet<string> ReservedCombos = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Esc",              // 停止
+            "Ctrl+Shift+R",     // 錄製開始/停止
+            "Ctrl+Shift+S",     // StartPreferred
+            "Ctrl+Shift+W",     // 載入 JSON
+            "Ctrl+Shift+P",     // 撥放流程
+            "Ctrl+Shift+X"      // StopAll
+        };
+
         private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0)
@@ -233,18 +244,26 @@ namespace AutoPressApp.Services
                 else if (isDown)
                 {
                     // Non-modifier key pressed: emit a KeyCombo step
-                    AddDelayFrom(_lastEventTime);
                     var parts = new System.Collections.Generic.List<string>();
                     if (_isCtrl) parts.Add("Ctrl");
                     if (_isShift) parts.Add("Shift");
                     if (_isAlt) parts.Add("Alt");
                     if (_isWin) parts.Add("Win");
                     parts.Add(VkToDisplay(vk));
-                    var step = new Steps.KeyComboStep { Keys = parts.ToArray() };
-                    _steps.Add(step);
-                    var line = $"KeyCombo {string.Join("+", parts)}";
-                    Log($"[Recorder] +{line}");
-                    StepCaptured?.Invoke(step, line);
+                    var comboStr = string.Join("+", parts);
+                    if (ReservedCombos.Contains(comboStr))
+                    {
+                        Log($"[Recorder] (skip control hotkey) {comboStr}");
+                    }
+                    else
+                    {
+                        AddDelayFrom(_lastEventTime);
+                        var step = new Steps.KeyComboStep { Keys = parts.ToArray() };
+                        _steps.Add(step);
+                        var line = $"KeyCombo {comboStr}";
+                        Log($"[Recorder] +{line}");
+                        StepCaptured?.Invoke(step, line);
+                    }
                 }
             }
             return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
