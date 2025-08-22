@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "name": "Example - Focus Notepad and Click",
+  "loopEnabled": false,
+  "steps": [
+    {
+      "$type": "focusWindow",
+      "titleContains": "Notepad",
+      "timeoutMs": 3000
+    },
+    {
+      "$type": "log",
+      "message": "Focused window"
+    },
+    {
+      "$type": "mouseClick",
+      "x": 200,
+      "y": 200,
+      "mode": 0,
+      "button": "left",
+      "afterDelayMs": 300
+    },
+    {
+      "$type": "delay",
+      "ms": 500
+    },
+    {
+      "$type": "log",
+      "message": "Done"
+    }
+  ]
+}

@@ -30,8 +30,12 @@
         {
             this.btnStart = new System.Windows.Forms.Button();
             this.lblStartInfo = new System.Windows.Forms.Label();
+            this.btnWorkflowRecord = new System.Windows.Forms.Button(); // legacy (hidden)
+            this.btnWorkflowRun = new System.Windows.Forms.Button();    // legacy (hidden)
+            this.btnWorkflowMenu = new System.Windows.Forms.Button();
             // 移除單鍵/間隔相關控制項
             this.lblStatus = new System.Windows.Forms.Label();
+            this.lblMode = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.chkTestMode = new System.Windows.Forms.CheckBox();
             this.cmbApplications = new System.Windows.Forms.ComboBox();
@@ -72,6 +76,39 @@
             this.btnStart.Text = "▶ 開始執行";
             this.btnStart.UseVisualStyleBackColor = false;
             this.btnStart.Click += new System.EventHandler(this.btnStart_Click);
+
+            // btnWorkflowRun
+            //
+            this.btnWorkflowRun.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnWorkflowRun.Location = new System.Drawing.Point(500, 210);
+            this.btnWorkflowRun.Name = "btnWorkflowRun";
+            this.btnWorkflowRun.Size = new System.Drawing.Size(150, 28);
+            this.btnWorkflowRun.TabIndex = 26;
+            this.btnWorkflowRun.Text = "執行流程 (JSON)";
+            this.btnWorkflowRun.UseVisualStyleBackColor = true;
+            this.btnWorkflowRun.Visible = false; // replaced by menu button
+
+            // btnWorkflowRecord
+            //
+            this.btnWorkflowRecord.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnWorkflowRecord.Location = new System.Drawing.Point(500, 245);
+            this.btnWorkflowRecord.Name = "btnWorkflowRecord";
+            this.btnWorkflowRecord.Size = new System.Drawing.Size(150, 28);
+            this.btnWorkflowRecord.TabIndex = 27;
+            this.btnWorkflowRecord.Text = "錄製流程 (滑鼠+視窗)";
+            this.btnWorkflowRecord.UseVisualStyleBackColor = true;
+            this.btnWorkflowRecord.Visible = false; // replaced by menu button
+
+            // btnWorkflowMenu
+            //
+            this.btnWorkflowMenu.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.btnWorkflowMenu.Location = new System.Drawing.Point(500, 210);
+            this.btnWorkflowMenu.Name = "btnWorkflowMenu";
+            this.btnWorkflowMenu.Size = new System.Drawing.Size(150, 63);
+            this.btnWorkflowMenu.TabIndex = 28;
+            this.btnWorkflowMenu.Text = "流程功能 ▼";
+            this.btnWorkflowMenu.UseVisualStyleBackColor = true;
+            this.btnWorkflowMenu.Click += new System.EventHandler(this.btnWorkflowMenu_Click);
             // 
             // lblStartInfo
             // 
@@ -95,6 +132,18 @@
             this.lblStatus.Size = new System.Drawing.Size(67, 16);
             this.lblStatus.TabIndex = 5;
             this.lblStatus.Text = "狀態: 待命中";
+            // 
+            // lblMode
+            // 
+            this.lblMode.AutoSize = true;
+            this.lblMode.Font = new System.Drawing.Font("Microsoft JhengHei", 10F, System.Drawing.FontStyle.Bold);
+            this.lblMode.Location = new System.Drawing.Point(500, 90);
+            this.lblMode.Name = "lblMode";
+            this.lblMode.Padding = new System.Windows.Forms.Padding(6, 3, 6, 3);
+            this.lblMode.Size = new System.Drawing.Size(86, 24);
+            this.lblMode.TabIndex = 29;
+            this.lblMode.Text = "狀態: 空閒";
+            this.lblMode.BackColor = System.Drawing.SystemColors.ControlLight;
             // 
             // groupBox1
             // 
@@ -281,6 +330,7 @@
             this.rtbHelp.BackColor = System.Drawing.SystemColors.Window;
             this.rtbHelp.DetectUrls = false;
             this.rtbHelp.ShortcutsEnabled = false;
+            this.rtbHelp.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
             // 
             // btnRecord
             // 
@@ -355,9 +405,11 @@
             this.ClientSize = new System.Drawing.Size(680, 860);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
+            this.Controls.Add(this.btnWorkflowMenu);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.lblStartInfo);
             this.Controls.Add(this.lblStatus);
+            this.Controls.Add(this.lblMode);
             this.Controls.Add(this.groupBoxHelp);
             this.Controls.Add(this.groupBoxTest);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Sizable;
@@ -379,8 +431,12 @@
 
         #endregion
 
-        private System.Windows.Forms.Button btnStart;
+    private System.Windows.Forms.Button btnStart;
+    private System.Windows.Forms.Label lblMode;
         private System.Windows.Forms.Label lblStartInfo;
+    private System.Windows.Forms.Button btnWorkflowRun;
+    private System.Windows.Forms.Button btnWorkflowRecord;
+    private System.Windows.Forms.Button btnWorkflowMenu;
     // 已移除單鍵與間隔控制項
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.GroupBox groupBox1;
