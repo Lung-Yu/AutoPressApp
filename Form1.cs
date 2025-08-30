@@ -1023,6 +1023,25 @@ namespace AutoPressApp
                 recorder = new RecorderService();
                 recorder.OnLog += UpdateStatus;
                 recorder.StepCaptured += Recorder_StepCaptured;
+                recorder.OnStopped += () =>
+                {
+                    // ESC 或其他方式停止錄製時自動結束 UI 狀態
+                    if (InvokeRequired)
+                    {
+                        Invoke(new Action(() => FinalizeWorkflowRecording(viaEsc: true, interactive: false)));
+                    }
+                    else
+                    {
+                        FinalizeWorkflowRecording(viaEsc: true, interactive: false);
+                    }
+                    if (btnRecord != null)
+                    {
+                        btnRecord.Text = "開始記錄";
+                        btnRecord.BackColor = SystemColors.Control;
+                        btnRecord.ForeColor = SystemColors.ControlText;
+                    }
+                    SetMode(RunMode.Idle);
+                };
                 liveWorkflowSteps = new List<AutoPressApp.Steps.Step>();
                 if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
                 recorder.Start();

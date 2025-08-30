@@ -11,6 +11,7 @@ namespace AutoPressApp.Services
     // Minimal workflow recorder: captures mouse click events and window focus changes.
     public class RecorderService : IDisposable
     {
+        private bool _isRecording = false;
     private const int WH_MOUSE_LL = 14;
     private const int WH_KEYBOARD_LL = 13;
         private const int WM_LBUTTONDOWN = 0x0201;
@@ -60,12 +61,14 @@ namespace AutoPressApp.Services
 
         private (string? Button, POINT Pt, DateTime Time)? _pendingDown;
 
-        public event Action<string>? OnLog;
+    public event Action<string>? OnLog;
     public event Action<Step, string>? StepCaptured;
+    public event Action? OnStopped;
     public IReadOnlyList<Step> Steps => _steps.AsReadOnly();
 
         public void Start()
         {
+            _isRecording = true;
             _steps.Clear();
             _pendingDown = null;
             _lastEventTime = DateTime.Now;
@@ -83,6 +86,7 @@ namespace AutoPressApp.Services
 
         public Workflow StopToWorkflow(string name = "Recorded Workflow")
         {
+            if (!_isRecording) return new Workflow { Name = name, Steps = new List<Step>(_steps) }; // 已停止不重複
             // 確保序列提交
             FinalizePendingSequence();
             if (_mouseHook != IntPtr.Zero)
@@ -96,6 +100,8 @@ namespace AutoPressApp.Services
                 _keyboardHook = IntPtr.Zero;
             }
             Log("[Recorder] Stopped");
+            _isRecording = false;
+            OnStopped?.Invoke();
             return new Workflow
             {
                 Name = name,
@@ -270,6 +276,16 @@ namespace AutoPressApp.Services
                 if (_isWin) parts.Add("Win");
                 parts.Add(disp);
                 var comboStr = string.Join("+", parts);
+                if (disp == "Esc")
+                {
+                    if (_isRecording) // 只允許停止一次
+                    {
+                        Log("[Recorder] (ESC pressed, stop recording)");
+                        FinalizePendingSequence();
+                        StopToWorkflow(); // 直接終止錄製
+                    }
+                    return; // 不加入步驟
+                }
                 if (ReservedCombos.Contains(comboStr))
                 {
                     Log("[Recorder] (skip control hotkey) " + comboStr);
