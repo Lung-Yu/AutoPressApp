@@ -271,7 +271,7 @@ namespace AutoPressApp
 
         private void InitializeTimers()
         {
-            replayTimer.Tick += ReplayTimer_Tick;
+            // Legacy timer removed
         }
 
         private void InstallGlobalHook()
@@ -347,42 +347,14 @@ namespace AutoPressApp
 
                 if (isRecording)
                 {
-                    // 記錄按鍵
-                    DateTime now = DateTime.Now;
-                    int delay = (int)(now - lastKeyTime).TotalMilliseconds;
-                    if (recordedKeys.Count == 0) delay = 0;
-
-                    var record = new KeyRecord
-                    {
-                        Key = key,
-                        Timestamp = now,
-                        DelayMs = delay
-                    };
-
-                    recordedKeys.Add(record);
-                    lastKeyTime = now;
-                    UpdateRecordedKeysList();
-                    UpdateStatus($"記錄按鍵: {key} (已記錄 {recordedKeys.Count} 個按鍵)");
+                    // Legacy recording removed - now uses RecorderService for KeySequenceStep
                 }
             }
 
             return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
         }
 
-        private void UpdateRecordedKeysList()
-        {
-            if (lstRecordedKeys.InvokeRequired)
-            {
-                lstRecordedKeys.Invoke(new Action(UpdateRecordedKeysList));
-                return;
-            }
-            
-            lstRecordedKeys.Items.Clear();
-            for (int i = 0; i < recordedKeys.Count; i++)
-            {
-                lstRecordedKeys.Items.Add($"{i + 1}. {recordedKeys[i]}");
-            }
-        }
+        // Legacy UpdateRecordedKeysList method removed
 
     // ...existing code...
 
@@ -987,60 +959,15 @@ namespace AutoPressApp
 
         private void BeginLegacyKeySequenceIfPossible()
         {
-            UpdateStatus("[LOG] BeginLegacyKeySequenceIfPossible 開始");
-            if (recordedKeys.Count == 0)
-            {
-                MessageBox.Show("尚未錄製任何流程步驟或按鍵。請先錄製流程 (流程功能) 或 使用『開始記錄』記錄舊式按鍵。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            // 檢查循環模式
-            bool loopMode = LoopPlayback;
-            UpdateStatus($"[LOG] 循環模式: {loopMode} (chkLoop.Checked = {chkLoop?.Checked})");
-
-            if (cmbApplications.SelectedItem is ApplicationItem app)
-            {
-                targetWindowHandle = app.WindowHandle;
-                targetWindowTitle = app.WindowTitle;
-            }
-            else
-            {
-                targetWindowHandle = IntPtr.Zero;
-                targetWindowTitle = "當前焦點視窗";
-            }
-
-            replayIndex = 0;
-            isReplaying = true;
-            isRunning = true;
-            SetMode(RunMode.PlayingLegacy);
-
-            bool testMode = chkTestMode != null && chkTestMode.Checked;
-            UpdateStatus($"[LOG] 準備開始回放，測試模式: {testMode}，循環: {loopMode}，目標: {targetWindowTitle}");
-
-            // 簡單的開始邏輯
-            int firstDelay = recordedKeys[0].DelayMs <= 0 ? 100 : recordedKeys[0].DelayMs;
-            int adjustedDelay = (int)(firstDelay / delayMultiplier); // 應用速度倍率
-            int actualDelay = Math.Max(50, adjustedDelay);
-            replayTimer.Interval = actualDelay;
-            replayTimer.Start();
-            
-            UpdateStatus($"[LOG] (Legacy) 定時器已啟動，間隔: {replayTimer.Interval}ms (原始: {firstDelay}ms, 倍率: {delayMultiplier}x)，啟用: {replayTimer.Enabled}");
-
-            if (btnRecord != null) btnRecord.Enabled = false;
-            if (btnReplay != null) btnReplay.Enabled = false;
-            if (btnClearRecord != null) btnClearRecord.Enabled = false;
+            // Legacy method replaced - now uses liveWorkflowSteps
+            UpdateStatus("[Start] 尚未錄製任何流程步驟，請先錄製流程。");
+            MessageBox.Show("尚未錄製任何流程步驟。請先錄製流程。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void StopAll()
         {
             UpdateStatus("[LOG] StopAll 被呼叫");
-            if (replayTimer.Enabled) 
-            {
-                replayTimer.Stop();
-                UpdateStatus("[LOG] 定時器已停止");
-            }
             isRunning = false;
-            isReplaying = false;
             workflowCts?.Cancel();
             if (recorder != null)
             {
@@ -1074,9 +1001,9 @@ namespace AutoPressApp
             if (btnReplay != null)
             {
                 btnReplay.Text = "回放記錄";
-                btnReplay.Enabled = recordedKeys.Count > 0;
+                btnReplay.Enabled = liveWorkflowSteps != null && liveWorkflowSteps.Count > 0;
             }
-            if (btnClearRecord != null) btnClearRecord.Enabled = recordedKeys.Count > 0;
+            if (btnClearRecord != null) btnClearRecord.Enabled = liveWorkflowSteps != null && liveWorkflowSteps.Count > 0;
             if (btnRecord != null) btnRecord.Enabled = true;
             SetMode(RunMode.Idle);
             UpdateStatus("[LOG] 所有狀態已重置");
@@ -1090,30 +1017,27 @@ namespace AutoPressApp
 
         private void btnRecord_Click(object sender, EventArgs e)
         {
-            if (!isRecording)
+            // 改為錄製 KeySequenceStep 流程
+            if (recorder == null)
             {
-                // 開始記錄
-                recordedKeys.Clear();
-                UpdateRecordedKeysList();
-                lastKeyTime = DateTime.Now;
-                
-                isRecording = true;
+                recorder = new RecorderService();
+                recorder.OnLog += UpdateStatus;
+                recorder.StepCaptured += Recorder_StepCaptured;
+                liveWorkflowSteps = new List<AutoPressApp.Steps.Step>();
+                if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
+                recorder.Start();
+                UpdateStatus("[Recorder] 開始錄製 (再次點擊停止並儲存)");
+                SetMode(RunMode.RecordingWorkflow);
                 btnRecord.Text = "停止記錄";
                 btnRecord.BackColor = Color.Red;
                 btnRecord.ForeColor = Color.White;
-                UpdateStatus("開始記錄按鍵...請在任何地方按鍵");
-                SetMode(RunMode.RecordingLegacy);
             }
             else
             {
-                isRecording = false;
+                FinalizeWorkflowRecording(viaEsc: false, interactive: true);
                 btnRecord.Text = "開始記錄";
                 btnRecord.BackColor = SystemColors.Control;
                 btnRecord.ForeColor = SystemColors.ControlText;
-                UpdateStatus($"記錄完成，共記錄 {recordedKeys.Count} 個按鍵");
-                
-                btnReplay.Enabled = recordedKeys.Count > 0;
-                btnClearRecord.Enabled = recordedKeys.Count > 0;
                 SetMode(RunMode.Idle);
             }
         }
@@ -1121,8 +1045,6 @@ namespace AutoPressApp
         private void btnReplay_Click(object sender, EventArgs e)
         {
             UpdateStatus("[BUTTON] btnReplay_Click 被點擊");
-            
-            // 確保不在記錄模式
             if (isRecording)
             {
                 UpdateStatus("[BUTTON] 停止記錄模式");
@@ -1131,106 +1053,23 @@ namespace AutoPressApp
                 btnRecord.BackColor = SystemColors.Control;
                 btnRecord.ForeColor = SystemColors.ControlText;
             }
-            
-            if (recordedKeys.Count == 0)
+            if (liveWorkflowSteps == null || liveWorkflowSteps.Count == 0)
             {
-                UpdateStatus("[BUTTON] 沒有記錄的按鍵");
-                MessageBox.Show("沒有記錄的按鍵可以回放！請先記錄一些按鍵。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                UpdateStatus("[BUTTON] 尚無錄製流程可回放");
+                MessageBox.Show("尚無錄製流程可回放！請先錄製流程。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            
-            UpdateStatus($"[BUTTON] 準備回放 {recordedKeys.Count} 個按鍵");
-            
-            // 檢查測試模式狀態
-            bool testMode = chkTestMode != null && chkTestMode.Checked;
-            UpdateStatus($"[BUTTON] 測試模式檢查: chkTestMode={chkTestMode != null}, Checked={testMode}");
-            if (chkTestMode != null)
-            {
-                UpdateStatus($"[BUTTON] chkTestMode 詳細: Visible={chkTestMode.Visible}, Enabled={chkTestMode.Enabled}, Text='{chkTestMode.Text}'");
-            }
-            
-            // 獲取目標視窗 - 這裡是關鍵！
-            UpdateStatus($"[BUTTON] 下拉選單狀態: SelectedIndex={cmbApplications.SelectedIndex}, ItemCount={cmbApplications.Items.Count}");
-            if (cmbApplications.SelectedItem != null)
-            {
-                UpdateStatus($"[BUTTON] 選中項目類型: {cmbApplications.SelectedItem.GetType().Name}");
-                UpdateStatus($"[BUTTON] 選中項目內容: {cmbApplications.SelectedItem}");
-            }
-            
-            if (cmbApplications.SelectedItem is ApplicationItem app)
-            {
-                targetWindowHandle = app.WindowHandle;
-                targetWindowTitle = app.WindowTitle;
-                UpdateStatus($"[BUTTON] 設置目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
-                
-                // 立即驗證視窗是否有效
-                bool isValid = IsWindow(targetWindowHandle);
-                bool isVisible = IsWindowVisible(targetWindowHandle);
-                UpdateStatus($"[BUTTON] 目標視窗驗證: Valid={isValid}, Visible={isVisible}");
-                
-                // 檢查視窗是否在前台
-                IntPtr foregroundWindow = GetForegroundWindow();
-                UpdateStatus($"[BUTTON] 當前前台視窗: {foregroundWindow}, 目標視窗: {targetWindowHandle}");
-                
-                // 嘗試激活目標視窗
-                SetForegroundWindow(targetWindowHandle);
-                UpdateStatus($"[BUTTON] 嘗試激活目標視窗");
-            }
-            else
-            {
-                targetWindowHandle = IntPtr.Zero;
-                targetWindowTitle = "當前焦點視窗";
-                UpdateStatus("[BUTTON] 使用當前焦點視窗 - 這可能是問題所在！");
-                
-                // 檢查為什麼不是ApplicationItem
-                if (cmbApplications.SelectedItem != null)
-                {
-                    UpdateStatus($"[BUTTON] 選中項目不是ApplicationItem，而是: {cmbApplications.SelectedItem.GetType().Name}");
-                    UpdateStatus($"[BUTTON] 內容: '{cmbApplications.SelectedItem.ToString()}'");
-                    
-                    // 如果選中的是字符串，嘗試獲取當前前台視窗
-                    IntPtr foregroundWindow = GetForegroundWindow();
-                    UpdateStatus($"[BUTTON] 當前前台視窗句柄: {foregroundWindow}");
-                    if (foregroundWindow != IntPtr.Zero)
-                    {
-                        targetWindowHandle = foregroundWindow;
-                        
-                        // 獲取視窗標題
-                        StringBuilder windowTitle = new StringBuilder(256);
-                        GetWindowText(foregroundWindow, windowTitle, windowTitle.Capacity);
-                        targetWindowTitle = windowTitle.ToString();
-                        UpdateStatus($"[BUTTON] 前台視窗標題: {targetWindowTitle}");
-                    }
-                }
-            }
-            
-            // 開始簡單的單次回放
-            replayIndex = 0;
-            isReplaying = true;
-            btnReplay.Text = "回放中...";
-            btnReplay.Enabled = false;
-            
-            UpdateStatus($"[BUTTON] 設定回放狀態: replayIndex={replayIndex}, isReplaying={isReplaying}");
-            UpdateStatus($"[BUTTON] 最終目標視窗: {targetWindowTitle} (Handle: {targetWindowHandle})");
-            
-            // 使用簡單的定時器邏輯
-            int initialDelay = 100; // 100ms後開始第一個按鍵
-            int adjustedDelay = (int)(initialDelay / delayMultiplier); // 應用速度倍率
-            int actualDelay = Math.Max(50, adjustedDelay);
-            replayTimer.Interval = actualDelay;
-            replayTimer.Start();
-            
-            UpdateStatus($"[BUTTON] 定時器已啟動: Interval={replayTimer.Interval}ms (倍率: {delayMultiplier}x), Enabled={replayTimer.Enabled}");
-            UpdateStatus($"開始回放，共 {recordedKeys.Count} 個按鍵");
+            var wf = new Workflow { Name = "Live Replay", Steps = new List<AutoPressApp.Steps.Step>(liveWorkflowSteps) };
+            _ = RunWorkflowPreviewAsync(wf);
         }
 
         private void btnClearRecord_Click(object sender, EventArgs e)
         {
-            recordedKeys.Clear();
-            UpdateRecordedKeysList();
+            liveWorkflowSteps?.Clear();
+            if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
             btnReplay.Enabled = false;
             btnClearRecord.Enabled = false;
-            UpdateStatus("記錄已清除");
+            UpdateStatus("流程已清除");
         }
 
         private void Form1_FormClosing(object? sender, FormClosingEventArgs e)
@@ -1243,51 +1082,23 @@ namespace AutoPressApp
 
     // 單鍵模式間隔事件已移除
 
-        // 匯出記錄到 JSON
-        private void ExportSequence(string filePath)
-        {
-            var simple = recordedKeys.Select(r => new { k = r.Key.ToString(), d = r.DelayMs }).ToList();
-            var json = System.Text.Json.JsonSerializer.Serialize(simple, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-            System.IO.File.WriteAllText(filePath, json, Encoding.UTF8);
-        }
-
-        // 從 JSON 匯入記錄
-        private void ImportSequence(string filePath)
-        {
-            if (!System.IO.File.Exists(filePath)) return;
-            var json = System.IO.File.ReadAllText(filePath, Encoding.UTF8);
-            var list = System.Text.Json.JsonSerializer.Deserialize<List<SequenceItem>>(json) ?? new();
-            recordedKeys.Clear();
-            int total = 0;
-            foreach (var item in list)
-            {
-                if (Enum.TryParse<Keys>(item.k, out var key))
-                {
-                    recordedKeys.Add(new KeyRecord { Key = key, DelayMs = item.d, Timestamp = DateTime.Now.AddMilliseconds(total) });
-                    total += item.d;
-                }
-            }
-            UpdateRecordedKeysList();
-            if (btnReplay != null) btnReplay.Enabled = recordedKeys.Count > 0;
-            if (btnClearRecord != null) btnClearRecord.Enabled = recordedKeys.Count > 0;
-            UpdateStatus($"已匯入 {recordedKeys.Count} 個按鍵");
-        }
-
-    private record SequenceItem(string k, int d);
+        // Legacy export/import methods replaced with Workflow JSON
 
     private void btnExport_Click(object sender, EventArgs e)
     {
-        if (recordedKeys.Count == 0)
+        if (liveWorkflowSteps == null || liveWorkflowSteps.Count == 0)
         {
-            MessageBox.Show("目前沒有記錄可匯出", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("目前沒有流程可匯出", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return;
         }
-        using var sfd = new SaveFileDialog { Filter = "JSON (*.json)|*.json", FileName = "sequence.json" };
+        using var sfd = new SaveFileDialog { Filter = "Workflow JSON (*.json)|*.json", FileName = "workflow.json" };
         if (sfd.ShowDialog() == DialogResult.OK)
         {
             try
             {
-                ExportSequence(sfd.FileName);
+                var wf = new Workflow { Name = "Exported Workflow", Steps = new List<AutoPressApp.Steps.Step>(liveWorkflowSteps) };
+                var json = WorkflowRunner.SaveToJson(wf);
+                System.IO.File.WriteAllText(sfd.FileName, json, Encoding.UTF8);
                 UpdateStatus("匯出完成: " + sfd.FileName);
             }
             catch (Exception ex)
@@ -1299,12 +1110,34 @@ namespace AutoPressApp
 
     private void btnImport_Click(object sender, EventArgs e)
     {
-        using var ofd = new OpenFileDialog { Filter = "JSON (*.json)|*.json" };
+        using var ofd = new OpenFileDialog { Filter = "Workflow JSON (*.json)|*.json" };
         if (ofd.ShowDialog() == DialogResult.OK)
         {
             try
             {
-                ImportSequence(ofd.FileName);
+                var json = System.IO.File.ReadAllText(ofd.FileName, Encoding.UTF8);
+                var wf = WorkflowRunner.LoadFromJson(json);
+                liveWorkflowSteps = new List<AutoPressApp.Steps.Step>(wf.Steps);
+                if (lstRecordedKeys != null)
+                {
+                    lstRecordedKeys.Items.Clear();
+                    foreach (var s in liveWorkflowSteps)
+                    {
+                        lstRecordedKeys.Items.Add(s switch
+                        {
+                            AutoPressApp.Steps.DelayStep d => $"Delay {d.Ms}ms",
+                            AutoPressApp.Steps.KeyComboStep k => $"KeyCombo {string.Join('+', k.Keys)}",
+                            AutoPressApp.Steps.KeySequenceStep ks => $"KeySeq {ks.Events.Count} ev",
+                            AutoPressApp.Steps.MouseClickStep m => $"Click {m.Button} ({m.X},{m.Y})",
+                            AutoPressApp.Steps.FocusWindowStep f => $"Focus '{f.TitleContains}'",
+                            AutoPressApp.Steps.LogStep lg => $"Log \"{lg.Message}\"",
+                            _ => s.GetType().Name
+                        });
+                    }
+                }
+                btnReplay.Enabled = liveWorkflowSteps.Count > 0;
+                btnClearRecord.Enabled = liveWorkflowSteps.Count > 0;
+                UpdateStatus($"已匯入 {liveWorkflowSteps.Count} 個流程步驟");
             }
             catch (Exception ex)
             {

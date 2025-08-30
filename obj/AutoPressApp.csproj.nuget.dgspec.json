@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "d:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj": {}
+    "D:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj": {}
   },
   "projects": {
-    "d:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj": {
+    "D:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "d:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj",
+        "projectUniqueName": "D:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj",
         "projectName": "AutoPressApp",
-        "projectPath": "d:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj",
+        "projectPath": "D:\\projects\\auto_press\\AutoPressApp\\AutoPressApp.csproj",
         "packagesPath": "C:\\Users\\lungyu\\.nuget\\packages\\",
-        "outputPath": "d:\\projects\\auto_press\\AutoPressApp\\obj\\",
+        "outputPath": "D:\\projects\\auto_press\\AutoPressApp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\lungyu\\AppData\\Roaming\\NuGet\\NuGet.Config",
