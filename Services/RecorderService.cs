@@ -266,6 +266,17 @@ namespace AutoPressApp.Services
         private void HandleKeySequenceEvent(int vk, bool down)
         {
             string disp = VkToDisplay(vk);
+            // 無論 down/up，只要是 ESC 都 return，不加入 KeySequenceStep
+            if (disp == "Esc")
+            {
+                if (down && _isRecording) // 只允許停止一次
+                {
+                    Log("[Recorder] (ESC pressed, stop recording)");
+                    FinalizePendingSequence();
+                    StopToWorkflow(); // 直接終止錄製
+                }
+                return; // 不加入步驟
+            }
             // 檢查是否是控制熱鍵 (只對 keydown 做過濾)
             if (down)
             {
@@ -276,16 +287,6 @@ namespace AutoPressApp.Services
                 if (_isWin) parts.Add("Win");
                 parts.Add(disp);
                 var comboStr = string.Join("+", parts);
-                if (disp == "Esc")
-                {
-                    if (_isRecording) // 只允許停止一次
-                    {
-                        Log("[Recorder] (ESC pressed, stop recording)");
-                        FinalizePendingSequence();
-                        StopToWorkflow(); // 直接終止錄製
-                    }
-                    return; // 不加入步驟
-                }
                 if (ReservedCombos.Contains(comboStr))
                 {
                     Log("[Recorder] (skip control hotkey) " + comboStr);
