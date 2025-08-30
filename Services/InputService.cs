@@ -170,7 +170,7 @@ namespace AutoPressApp.Services
             if (ctrl) up(0x11);
         }
 
-        private static byte MapKeyStringToVk(string key)
+    public static byte MapKeyStringToVk(string key)
         {
             // Normalize
             key = key.Trim();
@@ -225,6 +225,48 @@ namespace AutoPressApp.Services
                     return hexVk;
             }
             return 0; // fallback no-op
+        }
+
+        // 單一鍵 Down/Up 事件 (供 KeySequenceStep 使用)
+        public void SendKeyEvent(string key, bool down)
+        {
+            var vk = MapKeyStringToVk(key);
+            if (vk == 0) return;
+            try
+            {
+                var list = new System.Collections.Generic.List<INPUT>();
+                ushort uVk = vk;
+                var scan = (ushort)MapVirtualKey(uVk, 0);
+                uint flags = 0;
+                bool isExtended = uVk is 0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E;
+                if (scan != 0)
+                {
+                    flags |= KEYEVENTF_SCANCODE;
+                    if (isExtended) flags |= KEYEVENTF_EXTENDEDKEY;
+                }
+                if (!down) flags |= KEYEVENTF_KEYUP;
+                list.Add(new INPUT
+                {
+                    type = INPUT_KEYBOARD,
+                    U = new InputUnion
+                    {
+                        ki = new KEYBDINPUT
+                        {
+                            wVk = scan == 0 ? uVk : (ushort)0,
+                            wScan = scan,
+                            dwFlags = flags,
+                            time = 0,
+                            dwExtraInfo = UIntPtr.Zero
+                        }
+                    }
+                });
+                SendInput((uint)list.Count, list.ToArray(), Marshal.SizeOf<INPUT>());
+            }
+            catch
+            {
+                // Fallback
+                keybd_event(vk, 0, down ? 0u : KEYEVENTF_KEYUP, UIntPtr.Zero);
+            }
         }
     }
 }

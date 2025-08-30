@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using AutoPressApp.Models;
@@ -82,6 +83,8 @@ namespace AutoPressApp.Services
 
         public Workflow StopToWorkflow(string name = "Recorded Workflow")
         {
+            // 確保序列提交
+            FinalizePendingSequence();
             if (_mouseHook != IntPtr.Zero)
             {
                 UnhookWindowsHookEx(_mouseHook);
@@ -227,7 +230,7 @@ namespace AutoPressApp.Services
             "Ctrl+Shift+X"      // StopAll
         };
 
-        private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0)
             {
@@ -241,33 +244,73 @@ namespace AutoPressApp.Services
                 else if (vk == 0x10) { _isShift = isDown ? true : (isUp ? false : _isShift); }
                 else if (vk == 0x12) { _isAlt = isDown ? true : (isUp ? false : _isAlt); }
                 else if (vk == 0x5B || vk == 0x5C) { _isWin = isDown ? true : (isUp ? false : _isWin); } // LWIN/RWIN
-                else if (isDown)
+                else if (isDown || isUp)
                 {
-                    // Non-modifier key pressed: emit a KeyCombo step
-                    var parts = new System.Collections.Generic.List<string>();
-                    if (_isCtrl) parts.Add("Ctrl");
-                    if (_isShift) parts.Add("Shift");
-                    if (_isAlt) parts.Add("Alt");
-                    if (_isWin) parts.Add("Win");
-                    parts.Add(VkToDisplay(vk));
-                    var comboStr = string.Join("+", parts);
-                    if (ReservedCombos.Contains(comboStr))
-                    {
-                        Log($"[Recorder] (skip control hotkey) {comboStr}");
-                    }
-                    else
-                    {
-                        AddDelayFrom(_lastEventTime);
-                        var step = new Steps.KeyComboStep { Keys = parts.ToArray() };
-                        _steps.Add(step);
-                        var line = $"KeyCombo {comboStr}";
-                        Log($"[Recorder] +{line}");
-                        StepCaptured?.Invoke(step, line);
-                    }
+                    HandleKeySequenceEvent(vk, isDown);
                 }
             }
             return CallNextHookEx(_keyboardHook, nCode, wParam, lParam);
         }
+
+        // --------- KeySequence 錄製狀態 ---------
+        private KeySequenceStep? _pendingSeq;
+        private DateTime _lastKeyEventTime = DateTime.Now;
+        private const int SequenceSplitIdleMs = 600; // 超過此閒置視為新序列
+
+        private void HandleKeySequenceEvent(int vk, bool down)
+        {
+            string disp = VkToDisplay(vk);
+            // 檢查是否是控制熱鍵 (只對 keydown 做過濾)
+            if (down)
+            {
+                var parts = new System.Collections.Generic.List<string>();
+                if (_isCtrl) parts.Add("Ctrl");
+                if (_isShift) parts.Add("Shift");
+                if (_isAlt) parts.Add("Alt");
+                if (_isWin) parts.Add("Win");
+                parts.Add(disp);
+                var comboStr = string.Join("+", parts);
+                if (ReservedCombos.Contains(comboStr))
+                {
+                    Log("[Recorder] (skip control hotkey) " + comboStr);
+                    _lastKeyEventTime = DateTime.Now; // 不產生事件但刷新時間避免爆量 Delay
+                    return;
+                }
+            }
+
+            var now = DateTime.Now;
+            int gap = (int)(now - _lastKeyEventTime).TotalMilliseconds;
+            _lastKeyEventTime = now;
+
+            // 判斷是否要開啟新序列
+            if (_pendingSeq == null || gap > SequenceSplitIdleMs)
+            {
+                // 先將舊序列提交
+                FinalizePendingSequence();
+                AddDelayFrom(_lastEventTime); // 序列前保持與其他類事件的 Delay 步驟一致
+                _pendingSeq = new KeySequenceStep();
+            }
+            _pendingSeq.Events.Add(new KeyEventItem { Key = disp, Down = down, DelayMsBefore = Math.Max(0, gap) });
+        }
+
+        private void FinalizePendingSequence()
+        {
+            if (_pendingSeq == null) return;
+            if (_pendingSeq.Events.Count > 0)
+            {
+                _steps.Add(_pendingSeq);
+                var preview = string.Join(" ", _pendingSeq.Events
+                    .Take(6)
+                    .Select(e => (e.Down ? "↓" : "↑") + e.Key));
+                if (_pendingSeq.Events.Count > 6) preview += " ...";
+                var line = $"KeySequence { _pendingSeq.Events.Count } ev: {preview}";
+                Log("[Recorder] +" + line);
+                StepCaptured?.Invoke(_pendingSeq, line);
+            }
+            _pendingSeq = null;
+        }
+
+    // 移除重複定義 (上方已整合序列 finalize)
 
         private static string VkToDisplay(int vk)
         {

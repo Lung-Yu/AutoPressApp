@@ -129,14 +129,10 @@ namespace AutoPressApp
         private string targetWindowTitle = "";
         
         // 按鍵記錄相關
-        private List<KeyRecord> recordedKeys = new List<KeyRecord>();
-        private DateTime lastKeyTime = DateTime.Now;
-        private IntPtr keyboardHook = IntPtr.Zero;
-        private LowLevelKeyboardProc hookProc;
-    private int replayIndex = 0;
-    // 速度倍率 (1.0 = 原始延遲) 可由 UI 調整（後續新增控制）
+    // 移除 Legacy 鍵盤序列相關欄位
+    private IntPtr keyboardHook = IntPtr.Zero;
+    private LowLevelKeyboardProc hookProc;
     private double delayMultiplier = 1.0;
-    // 是否要循環回放（透過 UI CheckBox 控制）
     private bool LoopPlayback => chkLoop != null && chkLoop.Checked;
 
         // 工作流程相關
@@ -388,119 +384,7 @@ namespace AutoPressApp
             }
         }
 
-    private void ReplayTimer_Tick(object? sender, EventArgs e)
-        {
-            UpdateStatus($"[TIMER] ReplayTimer_Tick 觸發, replayIndex={replayIndex}, recordedKeys.Count={recordedKeys.Count}");
-            
-            if (!isReplaying || replayIndex >= recordedKeys.Count)
-            {
-                // 檢查是否需要循環
-                bool shouldLoop = LoopPlayback;
-                UpdateStatus($"[TIMER] 回放結束檢查: isReplaying={isReplaying}, replayIndex={replayIndex}, shouldLoop={shouldLoop}");
-                
-                if (shouldLoop && isReplaying)
-                {
-                    // 循環回放：重置索引並繼續
-                    replayIndex = 0;
-                    UpdateStatus("[TIMER] 循環重新開始");
-                    
-                    // 繼續執行，不要return
-                }
-                else
-                {
-                    // 結束回放
-                    UpdateStatus($"[TIMER] 回放結束條件: isReplaying={isReplaying}, replayIndex={replayIndex}");
-                    replayTimer.Stop();
-                    isReplaying = false;
-                    
-                    // 根據是從哪個按鈕開始的來決定如何恢復按鈕狀態
-                    if (btnReplay != null)
-                    {
-                        btnReplay.Text = "回放記錄";
-                        btnReplay.Enabled = true;
-                    }
-                    if (btnStart != null)
-                    {
-                        btnStart.Text = "開始";
-                    }
-                    
-                    UpdateStatus("回放完成");
-                    return;
-                }
-            }
-            
-            var record = recordedKeys[replayIndex];
-            bool testMode = chkTestMode != null && chkTestMode.Checked;
-            
-            UpdateStatus($"[TIMER] 處理第 {replayIndex + 1} 個按鍵: {record.Key}, 測試模式: {testMode}");
-            
-            if (testMode)
-            {
-                // 測試模式：寫入測試框
-                if (txtTest != null)
-                {
-                    txtTest.AppendText(record.Key + " ");
-                    UpdateStatus($"[TEST] 已寫入測試框: {record.Key}");
-                }
-                else
-                {
-                    UpdateStatus("[TEST] 錯誤: txtTest 控制項不存在");
-                }
-                UpdateStatus($"[測試模式] 已輸出: {record.Key} ({replayIndex + 1}/{recordedKeys.Count})");
-            }
-            else
-            {
-                // 正常模式：發送按鍵
-                UpdateStatus($"[NORMAL] 準備發送按鍵到目標視窗");
-                
-                if (targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle))
-                {
-                    UpdateStatus($"[NORMAL] 設定目標視窗: {targetWindowHandle} ({targetWindowTitle})");
-                    
-                    // 嘗試將目標視窗設為前景
-                    bool success = SetForegroundWindow(targetWindowHandle);
-                    if (success)
-                    {
-                        UpdateStatus("[NORMAL] 成功設置前景視窗");
-                        ShowWindow(targetWindowHandle, SW_RESTORE);
-                        // 給視窗更多時間來準備接收輸入
-                        System.Threading.Thread.Sleep(50);
-                    }
-                    else
-                    {
-                        UpdateStatus("[NORMAL] 警告: 無法設置前景視窗，可能被系統阻止");
-                    }
-                }
-                else
-                {
-                    UpdateStatus("[NORMAL] 使用當前焦點視窗");
-                }
-                
-                SendKeyPress(record.Key);
-                UpdateStatus($"[正常模式] 已發送: {record.Key} ({replayIndex + 1}/{recordedKeys.Count})");
-            }
-            
-            replayIndex++;
-            
-            // 設定下一個按鍵的間隔
-            if (replayIndex < recordedKeys.Count)
-            {
-                int nextDelay = recordedKeys[replayIndex].DelayMs;
-                int adjustedDelay = (int)(nextDelay / delayMultiplier); // 應用速度倍率
-                int actualDelay = Math.Max(50, adjustedDelay); // 最小50ms防止過快
-                replayTimer.Interval = actualDelay;
-                UpdateStatus($"[TIMER] 下一個間隔: {actualDelay}ms (原始: {nextDelay}ms, 倍率: {delayMultiplier}x)");
-            }
-            else if (LoopPlayback)
-            {
-                // 循環模式：準備下一輪
-                int firstDelay = recordedKeys[0].DelayMs <= 0 ? 500 : recordedKeys[0].DelayMs; // 循環間隔稍長一點
-                int adjustedDelay = (int)(firstDelay / delayMultiplier); // 應用速度倍率
-                int actualDelay = Math.Max(50, adjustedDelay);
-                replayTimer.Interval = actualDelay;
-                UpdateStatus($"[TIMER] 循環準備下一輪: {actualDelay}ms (原始: {firstDelay}ms, 倍率: {delayMultiplier}x)");
-            }
-        }
+    // ...existing code...
 
     // 已移除單鍵定時功能
 
@@ -1518,6 +1402,7 @@ namespace AutoPressApp
                         {
                             AutoPressApp.Steps.DelayStep d => $"Delay {d.Ms}ms",
                             AutoPressApp.Steps.KeyComboStep k => $"KeyCombo {string.Join('+', k.Keys)}",
+                            AutoPressApp.Steps.KeySequenceStep ks => $"KeySeq {ks.Events.Count} ev",
                             AutoPressApp.Steps.MouseClickStep m => $"Click {m.Button} ({m.X},{m.Y})",
                             AutoPressApp.Steps.FocusWindowStep f => $"Focus '{f.TitleContains}'",
                             AutoPressApp.Steps.LogStep lg => $"Log \"{lg.Message}\"",
@@ -1563,7 +1448,9 @@ namespace AutoPressApp
             liveWorkflowSteps?.Add(step);
             if (lstRecordedKeys != null)
             {
-                lstRecordedKeys.Items.Add(summary);
+                lstRecordedKeys.Items.Add(step is AutoPressApp.Steps.KeySequenceStep seq
+                    ? $"KeySeq {seq.Events.Count} ev"
+                    : summary);
                 lstRecordedKeys.TopIndex = lstRecordedKeys.Items.Count - 1; // auto-scroll
             }
         }

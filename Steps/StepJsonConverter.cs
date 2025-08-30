@@ -19,6 +19,7 @@ namespace AutoPressApp.Steps
                 "delay" => typeof(DelayStep),
                 "log" => typeof(LogStep),
                 "keycombo" => typeof(KeyComboStep),
+                "keysequence" => typeof(KeySequenceStep),
                 _ => throw new JsonException($"Unknown step type '{disc}'")
             };
             string json = doc.RootElement.GetRawText();
@@ -35,6 +36,7 @@ namespace AutoPressApp.Steps
                 DelayStep => "delay",
                 LogStep => "log",
                 KeyComboStep => "keyCombo",
+                KeySequenceStep => "keySequence",
                 _ => value.GetType().Name
             };
             using var doc = JsonDocument.Parse(JsonSerializer.Serialize(value, value.GetType(), options));
