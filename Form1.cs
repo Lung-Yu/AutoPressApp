@@ -15,21 +15,33 @@ using AutoPressApp.Models;
 
 namespace AutoPressApp
 {
-    // 按鍵記錄結構
-    public class KeyRecord
-    {
-        public Keys Key { get; set; }
-        public DateTime Timestamp { get; set; }
-        public int DelayMs { get; set; }
-        
-        public override string ToString()
-        {
-            return $"{Key} (延遲: {DelayMs}ms)";
-        }
-    }
+    // (已移除未使用的 KeyRecord 結構)
 
     public partial class Form1 : Form
     {
+        private void btnDeleteStep_Click(object sender, EventArgs e)
+        {
+            if (lstRecordedKeys == null || liveWorkflowSteps == null) return;
+            var indices = lstRecordedKeys.SelectedIndices;
+            if (indices.Count == 0) return;
+            // 先將 index 由大到小排序，避免移除時 index 錯亂
+            var toRemove = new List<int>();
+            foreach (int idx in indices) toRemove.Add(idx);
+            toRemove.Sort((a, b) => b.CompareTo(a));
+            foreach (int idx in toRemove)
+            {
+                if (idx >= 0 && idx < liveWorkflowSteps.Count)
+                {
+                    liveWorkflowSteps.RemoveAt(idx);
+                    lstRecordedKeys.Items.RemoveAt(idx);
+                }
+            }
+            // 更新按鈕狀態
+            btnReplay.Enabled = liveWorkflowSteps.Count > 0;
+            btnClearRecord.Enabled = liveWorkflowSteps.Count > 0;
+            UpdateStatus($"已刪除 {toRemove.Count} 個步驟");
+        }
+    // ---- Win32 Interop ----
         // Windows API for sending key presses
         // 使用 SendInput 取代過時的 keybd_event
         [StructLayout(LayoutKind.Sequential)]
@@ -116,24 +128,16 @@ namespace AutoPressApp
     private const int WM_KEYDOWN = 0x0100;
     private const int WM_KEYUP = 0x0101;
     private const int KEYEVENTF_KEYUP = 0x0002;
-    private const int KEYEVENTF_SCANCODE = 0x0008;
         private const int SW_RESTORE = 9;
 
     private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
         
-    private System.Windows.Forms.Timer replayTimer = new System.Windows.Forms.Timer();
     private bool isRunning = false;
-        private bool isRecording = false;
-        private bool isReplaying = false; // 用於判斷目前是否在回放
-        private IntPtr targetWindowHandle = IntPtr.Zero;
-        private string targetWindowTitle = "";
-        
-        // 按鍵記錄相關
-    // 移除 Legacy 鍵盤序列相關欄位
+    private IntPtr targetWindowHandle = IntPtr.Zero;
+    // Legacy 相關欄位已移除
     private IntPtr keyboardHook = IntPtr.Zero;
     private LowLevelKeyboardProc hookProc;
     private double delayMultiplier = 1.0;
-    private bool LoopPlayback => chkLoop != null && chkLoop.Checked;
 
         // 工作流程相關
         private CancellationTokenSource? workflowCts;
@@ -142,7 +146,7 @@ namespace AutoPressApp
 
         private ContextMenuStrip? workflowMenu;
         // 模式狀態 (統一顯示 Recording / Playing)
-        private enum RunMode { Idle, RecordingWorkflow, RecordingLegacy, PlayingWorkflow, PlayingLegacy }
+    private enum RunMode { Idle, RecordingWorkflow, PlayingWorkflow }
         private RunMode currentMode = RunMode.Idle;
         private void SetMode(RunMode mode)
         {
@@ -158,20 +162,16 @@ namespace AutoPressApp
                 {
                     RunMode.Idle => "狀態: 空閒",
                     RunMode.RecordingWorkflow => "狀態: 錄製流程中 (ESC 停止)",
-                    RunMode.RecordingLegacy => "狀態: 錄製舊按鍵中 (ESC 停止)",
                     RunMode.PlayingWorkflow => "狀態: 回放流程中 (ESC 停止)",
-                    RunMode.PlayingLegacy => "狀態: 回放舊按鍵中 (ESC 停止)",
                     _ => "狀態: ?"
                 };
                 if (lblMode != null) lblMode.Text = txt;
                 Color back; Color fore;
                 switch (mode)
                 {
-                    case RunMode.RecordingWorkflow:
-                    case RunMode.RecordingLegacy:
+            case RunMode.RecordingWorkflow:
                         back = Color.Red; fore = Color.White; break;
-                    case RunMode.PlayingWorkflow:
-                    case RunMode.PlayingLegacy:
+            case RunMode.PlayingWorkflow:
                         back = Color.ForestGreen; fore = Color.White; break;
                     default:
                         back = SystemColors.ControlLight; fore = Color.Black; break;
@@ -183,7 +183,7 @@ namespace AutoPressApp
                 }
                 if (btnStart != null)
                 {
-                    if (mode == RunMode.PlayingWorkflow || mode == RunMode.PlayingLegacy)
+            if (mode == RunMode.PlayingWorkflow)
                     {
                         btnStart.Text = "停止";
                         btnStart.Enabled = true;
@@ -219,7 +219,6 @@ namespace AutoPressApp
         public Form1()
         {
             InitializeComponent();
-            InitializeTimers();
             LoadRunningApplications();
             
             // 初始化鍵盤鉤子
@@ -267,11 +266,6 @@ namespace AutoPressApp
             
             // 註冊關閉事件
             this.FormClosing += Form1_FormClosing;
-        }
-
-        private void InitializeTimers()
-        {
-            // Legacy timer removed
         }
 
         private void InstallGlobalHook()
@@ -345,10 +339,6 @@ namespace AutoPressApp
                     return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
                 }
 
-                if (isRecording)
-                {
-                    // Legacy recording removed - now uses RecorderService for KeySequenceStep
-                }
             }
 
             return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
@@ -460,29 +450,6 @@ namespace AutoPressApp
             SendInputToSystem(key);
         }
         
-        private void SendInputToTarget(Keys key)
-        {
-            UpdateStatus($"[LOG] 開始發送按鍵到系統: {key}");
-            
-            // 確保目標視窗是焦點視窗（如果有指定的話）
-            if (targetWindowHandle != IntPtr.Zero)
-            {
-                bool setForeground = SetForegroundWindow(targetWindowHandle);
-                UpdateStatus($"[LOG] 設置目標視窗為焦點: {setForeground}");
-                
-                // 等待視窗切換完成
-                System.Threading.Thread.Sleep(100);
-                
-                // 確認前景視窗
-                IntPtr currentForeground = GetForegroundWindow();
-                bool isForeground = currentForeground == targetWindowHandle;
-                UpdateStatus($"[LOG] 前景視窗確認: Expected={targetWindowHandle}, Actual={currentForeground}, Match={isForeground}");
-            }
-            
-            // 使用全域 SendInput 發送到系統（不指定特定視窗）
-            SendInputToSystem(key);
-        }
-
         private void SendInputToSystem(Keys key)
         {
             // 取得正確的虛擬鍵碼
@@ -551,125 +518,6 @@ namespace AutoPressApp
             {
                 UpdateStatus($"[LOG] 全域 SendInput 成功發送按鍵: {key}");
             }
-        }
-
-        private bool TryClipboardMethod(Keys key)
-        {
-            try
-            {
-                // 將按鍵轉換為字符
-                char character = GetCharFromKey(key);
-                if (character == '\0' || char.IsControl(character))
-                {
-                    return false; // 只處理可打印字符
-                }
-                
-                UpdateStatus($"[LOG] 嘗試剪貼板方法發送: '{character}'");
-                
-                // 保存當前剪貼板內容
-                string originalClipboard = "";
-                if (System.Windows.Forms.Clipboard.ContainsText())
-                {
-                    originalClipboard = System.Windows.Forms.Clipboard.GetText();
-                }
-                
-                // 將字符放入剪貼板
-                System.Windows.Forms.Clipboard.SetText(character.ToString());
-                
-                // 發送 Ctrl+V 到目標視窗
-                const uint WM_KEYDOWN = 0x0100;
-                const uint WM_KEYUP = 0x0101;
-                const int VK_CONTROL = 0x11;
-                const int VK_V = 0x56;
-                
-                // 按下 Ctrl
-                SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)VK_CONTROL, IntPtr.Zero);
-                System.Threading.Thread.Sleep(10);
-                
-                // 按下 V
-                SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)VK_V, IntPtr.Zero);
-                System.Threading.Thread.Sleep(10);
-                
-                // 釋放 V
-                SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)VK_V, IntPtr.Zero);
-                System.Threading.Thread.Sleep(10);
-                
-                // 釋放 Ctrl
-                SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)VK_CONTROL, IntPtr.Zero);
-                
-                // 等待一下讓貼上完成
-                System.Threading.Thread.Sleep(100);
-                
-                // 恢復原來的剪貼板內容
-                if (!string.IsNullOrEmpty(originalClipboard))
-                {
-                    System.Windows.Forms.Clipboard.SetText(originalClipboard);
-                }
-                else
-                {
-                    System.Windows.Forms.Clipboard.Clear();
-                }
-                
-                UpdateStatus($"[LOG] 剪貼板方法完成");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                UpdateStatus($"[LOG] 剪貼板方法失敗: {ex.Message}");
-                return false;
-            }
-        }
-
-        private bool TrySendCharMessage(Keys key)
-        {
-            if (targetWindowHandle == IntPtr.Zero)
-                return false;
-                
-            // 將 Keys 轉換為字符
-            char character = GetCharFromKey(key);
-            if (character == '\0')
-            {
-                UpdateStatus($"[LOG] 無法轉換按鍵為字符: {key}");
-                return false;
-            }
-            
-            // 獲取虛擬鍵碼
-            ushort virtualKey = GetVirtualKeyCode(key);
-            
-            UpdateStatus($"[LOG] 嘗試發送完整按鍵序列: '{character}' (VK=0x{virtualKey:X2})");
-            
-            // 發送完整的按鍵序列：KEYDOWN -> CHAR -> KEYUP
-            const uint WM_KEYDOWN = 0x0100;
-            const uint WM_CHAR = 0x0102;
-            const uint WM_KEYUP = 0x0101;
-            
-            // 1. 發送 WM_KEYDOWN
-            IntPtr keyDownResult = SendMessage(targetWindowHandle, WM_KEYDOWN, (IntPtr)virtualKey, IntPtr.Zero);
-            UpdateStatus($"[LOG] SendMessage WM_KEYDOWN 結果: {keyDownResult}");
-            
-            // 短暫延遲
-            System.Threading.Thread.Sleep(10);
-            
-            // 2. 發送 WM_CHAR (只對可打印字符)
-            if (char.IsControl(character) == false)
-            {
-                IntPtr charResult = SendMessage(targetWindowHandle, WM_CHAR, (IntPtr)character, IntPtr.Zero);
-                UpdateStatus($"[LOG] SendMessage WM_CHAR 結果: {charResult}");
-            }
-            
-            // 短暫延遲
-            System.Threading.Thread.Sleep(10);
-            
-            // 3. 發送 WM_KEYUP
-            IntPtr keyUpResult = SendMessage(targetWindowHandle, WM_KEYUP, (IntPtr)virtualKey, IntPtr.Zero);
-            UpdateStatus($"[LOG] SendMessage WM_KEYUP 結果: {keyUpResult}");
-            
-            // 檢查是否至少有一個消息被處理
-            bool anySuccess = keyDownResult != IntPtr.Zero || keyUpResult != IntPtr.Zero;
-            UpdateStatus($"[LOG] 按鍵序列發送完成，成功: {anySuccess}");
-            
-            // 只有當消息確實被處理時才返回 true
-            return anySuccess;
         }
 
         private char GetCharFromKey(Keys key)
@@ -849,54 +697,7 @@ namespace AutoPressApp
             }
         }
 
-        // 測試SendInput功能
-        private void TestSendInput()
-        {
-            UpdateStatus("[TEST] 測試 SendInput 功能 - 將發送字母 'A'");
-            
-            var inputs = new INPUT[]
-            {
-                new INPUT
-                {
-                    type = 1,
-                    U = new InputUnion
-                    {
-                        ki = new KEYBDINPUT
-                        {
-                            wVk = 0x41, // A key
-                            wScan = 0,
-                            dwFlags = 0,
-                            time = 0,
-                            dwExtraInfo = UIntPtr.Zero
-                        }
-                    }
-                },
-                new INPUT
-                {
-                    type = 1,
-                    U = new InputUnion
-                    {
-                        ki = new KEYBDINPUT
-                        {
-                            wVk = 0x41, // A key
-                            wScan = 0,
-                            dwFlags = KEYEVENTF_KEYUP,
-                            time = 0,
-                            dwExtraInfo = UIntPtr.Zero
-                        }
-                    }
-                }
-            };
-            
-            uint result = SendInput(2, inputs, Marshal.SizeOf<INPUT>());
-            UpdateStatus($"[TEST] SendInput 測試結果: {result}/2");
-            
-            if (result == 0)
-            {
-                int error = Marshal.GetLastWin32Error();
-                UpdateStatus($"[TEST] SendInput 失敗，錯誤: {error}");
-            }
-        }
+    // (已移除 TestSendInput / 直接測試用程式碼)
 
         private void UpdateStatus(string message)
         {
@@ -922,7 +723,7 @@ namespace AutoPressApp
         private void btnStart_Click(object sender, EventArgs e)
         {
             // 若目前在任一播放模式，轉成停止
-            if (currentMode == RunMode.PlayingWorkflow || currentMode == RunMode.PlayingLegacy || isRunning)
+            if (currentMode == RunMode.PlayingWorkflow || isRunning)
             {
                 UpdateStatus("[UI] 停止按鈕觸發");
                 StopAll();
@@ -941,7 +742,7 @@ namespace AutoPressApp
                 return;
             }
             // 正在錄製時不可啟動
-            if (recorder != null || isRecording)
+            if (recorder != null)
             {
                 UpdateStatus("[Start] 正在錄製中，無法啟動播放");
                 return;
@@ -953,15 +754,8 @@ namespace AutoPressApp
                 _ = RunWorkflowPreviewAsync(new Workflow { Name = "Live Workflow", Steps = new List<AutoPressApp.Steps.Step>(liveWorkflowSteps) });
                 return;
             }
-            // fallback legacy
-            BeginLegacyKeySequenceIfPossible();
-        }
-
-        private void BeginLegacyKeySequenceIfPossible()
-        {
-            // Legacy method replaced - now uses liveWorkflowSteps
-            UpdateStatus("[Start] 尚未錄製任何流程步驟，請先錄製流程。");
             MessageBox.Show("尚未錄製任何流程步驟。請先錄製流程。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            UpdateStatus("[Start] 尚未錄製任何流程步驟，請先錄製流程。");
         }
 
         private void StopAll()
@@ -988,16 +782,7 @@ namespace AutoPressApp
                     UpdateStatus("[Recorder] 錄製已中止");
                 }
             }
-            if (isRecording)
-            {
-                isRecording = false;
-                if (btnRecord != null)
-                {
-                    btnRecord.Text = "開始記錄";
-                    btnRecord.BackColor = SystemColors.Control;
-                    btnRecord.ForeColor = SystemColors.ControlText;
-                }
-            }
+            // (已移除舊 isRecording 流程)
             if (btnReplay != null)
             {
                 btnReplay.Text = "回放記錄";
@@ -1064,14 +849,7 @@ namespace AutoPressApp
         private void btnReplay_Click(object sender, EventArgs e)
         {
             UpdateStatus("[BUTTON] btnReplay_Click 被點擊");
-            if (isRecording)
-            {
-                UpdateStatus("[BUTTON] 停止記錄模式");
-                isRecording = false;
-                btnRecord.Text = "開始記錄";
-                btnRecord.BackColor = SystemColors.Control;
-                btnRecord.ForeColor = SystemColors.ControlText;
-            }
+            // (已移除舊 isRecording 流程切換)
             if (liveWorkflowSteps == null || liveWorkflowSteps.Count == 0)
             {
                 UpdateStatus("[BUTTON] 尚無錄製流程可回放");
