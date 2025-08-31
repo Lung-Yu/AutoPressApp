@@ -1038,24 +1038,11 @@ namespace AutoPressApp
                 RebuildTreeView();
                 SetMode(RunMode.Idle);
                 UpdateStatus(viaEsc ? "[Recorder] 錄製完成 (ESC) 已保留步驟" : "[Recorder] 錄製完成");
+                // 取消原本的互動式預覽與自動儲存對話框，避免每次錄製結束彈出視窗。
+                // 使用者可手動按下『回放記錄』或『匯出』來預覽 / 儲存。
                 if (interactive)
                 {
-                    var preview = MessageBox.Show("要立即回放一次以預覽錄製效果嗎?", "錄製完成", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-                    if (preview == DialogResult.Yes)
-                    {
-                        _ = RunWorkflowPreviewAsync(wf);
-                    }
-                    using var sfd = new SaveFileDialog { Filter = "Workflow JSON (*.json)|*.json", FileName = $"workflow-{DateTime.Now:yyyyMMdd-HHmmss}.json" };
-                    if (sfd.ShowDialog() == DialogResult.OK)
-                    {
-                        var json = WorkflowRunner.SaveToJson(wf);
-                        System.IO.File.WriteAllText(sfd.FileName, json, Encoding.UTF8);
-                        UpdateStatus($"[Recorder] 已儲存: {sfd.FileName}");
-                    }
-                    else
-                    {
-                        UpdateStatus("[Recorder] 已取消儲存");
-                    }
+                    UpdateStatus("[Recorder] 已取消自動預覽/儲存 (可手動使用 回放記錄 / 匯出)");
                 }
             }
             catch (Exception ex)
