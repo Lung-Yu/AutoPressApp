@@ -138,6 +138,8 @@ namespace AutoPressApp
     private IntPtr keyboardHook = IntPtr.Zero;
     private LowLevelKeyboardProc hookProc;
     private double delayMultiplier = 1.0;
+    // 防止錄製 finalize 重入 (0 = 未完成, 1 = 已完成)
+    private int recordingFinalizeState = 0;
 
         // 工作流程相關
         private CancellationTokenSource? workflowCts;
@@ -306,7 +308,15 @@ namespace AutoPressApp
                 }
                 if (ctrl && shift && key == Keys.R)
                 {
-                    ToggleRecordWorkflow();
+                    // 播放期間忽略錄製熱鍵，避免中途插入新錄製
+                    if (currentMode == RunMode.PlayingWorkflow)
+                    {
+                        UpdateStatus("[Hotkey] 播放中忽略錄製熱鍵");
+                    }
+                    else
+                    {
+                        ToggleRecordWorkflow();
+                    }
                     return CallNextHookEx(keyboardHook, nCode, wParam, lParam);
                 }
                 if (ctrl && shift && key == Keys.P)
@@ -328,8 +338,8 @@ namespace AutoPressApp
                 {
                     if (recorder != null && currentMode == RunMode.RecordingWorkflow)
                     {
-                        FinalizeWorkflowRecording(viaEsc: true, interactive: false);
-                        UpdateStatus("[Recorder] ESC 結束並保留流程");
+                        // 交由 RecorderService 內部 ESC 偵測觸發 StopToWorkflow -> OnStopped -> Finalize
+                        UpdateStatus("[Recorder] ESC 停止錄製中...");
                     }
                     else
                     {
@@ -811,13 +821,16 @@ namespace AutoPressApp
                 recorder.OnStopped += () =>
                 {
                     // ESC 或其他方式停止錄製時自動結束 UI 狀態
-                    if (InvokeRequired)
+                    if (System.Threading.Interlocked.Exchange(ref recordingFinalizeState, 1) == 0)
                     {
-                        Invoke(new Action(() => FinalizeWorkflowRecording(viaEsc: true, interactive: false)));
-                    }
-                    else
-                    {
-                        FinalizeWorkflowRecording(viaEsc: true, interactive: false);
+                        if (InvokeRequired)
+                        {
+                            Invoke(new Action(() => FinalizeWorkflowRecording(viaEsc: true, interactive: false, fromOnStopped:true)));
+                        }
+                        else
+                        {
+                            FinalizeWorkflowRecording(viaEsc: true, interactive: false, fromOnStopped:true);
+                        }
                     }
                     if (btnRecord != null)
                     {
@@ -829,6 +842,7 @@ namespace AutoPressApp
                 };
                 liveWorkflowSteps = new List<AutoPressApp.Steps.Step>();
                 if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
+                System.Threading.Interlocked.Exchange(ref recordingFinalizeState, 0);
                 recorder.Start();
                 UpdateStatus("[Recorder] 開始錄製 (再次點擊停止並儲存)");
                 SetMode(RunMode.RecordingWorkflow);
@@ -864,6 +878,7 @@ namespace AutoPressApp
         {
             liveWorkflowSteps?.Clear();
             if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
+            if (tvSteps != null) tvSteps.Nodes.Clear();
             btnReplay.Enabled = false;
             btnClearRecord.Enabled = false;
             UpdateStatus("流程已清除");
@@ -915,23 +930,7 @@ namespace AutoPressApp
                 var json = System.IO.File.ReadAllText(ofd.FileName, Encoding.UTF8);
                 var wf = WorkflowRunner.LoadFromJson(json);
                 liveWorkflowSteps = new List<AutoPressApp.Steps.Step>(wf.Steps);
-                if (lstRecordedKeys != null)
-                {
-                    lstRecordedKeys.Items.Clear();
-                    foreach (var s in liveWorkflowSteps)
-                    {
-                        lstRecordedKeys.Items.Add(s switch
-                        {
-                            AutoPressApp.Steps.DelayStep d => $"Delay {d.Ms}ms",
-                            AutoPressApp.Steps.KeyComboStep k => $"KeyCombo {string.Join('+', k.Keys)}",
-                            AutoPressApp.Steps.KeySequenceStep ks => $"KeySeq {ks.Events.Count} ev",
-                            AutoPressApp.Steps.MouseClickStep m => $"Click {m.Button} ({m.X},{m.Y})",
-                            AutoPressApp.Steps.FocusWindowStep f => $"Focus '{f.TitleContains}'",
-                            AutoPressApp.Steps.LogStep lg => $"Log \"{lg.Message}\"",
-                            _ => s.GetType().Name
-                        });
-                    }
-                }
+                RebuildTreeView();
                 btnReplay.Enabled = liveWorkflowSteps.Count > 0;
                 btnClearRecord.Enabled = liveWorkflowSteps.Count > 0;
                 UpdateStatus($"已匯入 {liveWorkflowSteps.Count} 個流程步驟");
@@ -989,6 +988,11 @@ namespace AutoPressApp
         {
             try
             {
+                if (currentMode == RunMode.PlayingWorkflow)
+                {
+                    UpdateStatus("[Recorder] 播放中無法開始錄製");
+                    return;
+                }
                 if (recorder == null)
                 {
                     recorder = new RecorderService();
@@ -996,6 +1000,7 @@ namespace AutoPressApp
                     recorder.StepCaptured += Recorder_StepCaptured;
                     liveWorkflowSteps = new List<AutoPressApp.Steps.Step>();
                     if (lstRecordedKeys != null) lstRecordedKeys.Items.Clear();
+                    System.Threading.Interlocked.Exchange(ref recordingFinalizeState, 0);
                     recorder.Start();
                     UpdateStatus("[Recorder] 開始錄製 (Ctrl+Shift+R 再次停止並儲存)");
                     SetMode(RunMode.RecordingWorkflow);
@@ -1011,35 +1016,26 @@ namespace AutoPressApp
             }
         }
 
-        private void FinalizeWorkflowRecording(bool viaEsc, bool interactive)
+        private void FinalizeWorkflowRecording(bool viaEsc, bool interactive, bool fromOnStopped = false)
         {
             try
             {
-                if (recorder == null) return;
+                // 防止重入 (若尚未由 OnStopped 設置，則設定 flag)
+                if (System.Threading.Interlocked.CompareExchange(ref recordingFinalizeState, 1, 0) != 0 && !fromOnStopped)
+                {
+                    return; // 已 finalize
+                }
+                if (recorder == null)
+                {
+                    return;
+                }
                 var wf = recorder.StopToWorkflow("Recorded Workflow");
-                recorder.OnLog -= UpdateStatus;
-                recorder.StepCaptured -= Recorder_StepCaptured;
-                recorder.Dispose();
+                try { recorder.OnLog -= UpdateStatus; } catch { }
+                try { recorder.StepCaptured -= Recorder_StepCaptured; } catch { }
+                try { recorder.Dispose(); } catch { }
                 recorder = null;
                 liveWorkflowSteps = new List<AutoPressApp.Steps.Step>(wf.Steps);
-                // Refresh list to ensure last delay is shown
-                if (lstRecordedKeys != null)
-                {
-                    lstRecordedKeys.Items.Clear();
-                    foreach (var s in liveWorkflowSteps)
-                    {
-                        lstRecordedKeys.Items.Add(s switch
-                        {
-                            AutoPressApp.Steps.DelayStep d => $"Delay {d.Ms}ms",
-                            AutoPressApp.Steps.KeyComboStep k => $"KeyCombo {string.Join('+', k.Keys)}",
-                            AutoPressApp.Steps.KeySequenceStep ks => $"KeySeq {ks.Events.Count} ev",
-                            AutoPressApp.Steps.MouseClickStep m => $"Click {m.Button} ({m.X},{m.Y})",
-                            AutoPressApp.Steps.FocusWindowStep f => $"Focus '{f.TitleContains}'",
-                            AutoPressApp.Steps.LogStep lg => $"Log \"{lg.Message}\"",
-                            _ => s.GetType().Name
-                        });
-                    }
-                }
+                RebuildTreeView();
                 SetMode(RunMode.Idle);
                 UpdateStatus(viaEsc ? "[Recorder] 錄製完成 (ESC) 已保留步驟" : "[Recorder] 錄製完成");
                 if (interactive)
@@ -1076,13 +1072,7 @@ namespace AutoPressApp
                 return;
             }
             liveWorkflowSteps?.Add(step);
-            if (lstRecordedKeys != null)
-            {
-                lstRecordedKeys.Items.Add(step is AutoPressApp.Steps.KeySequenceStep seq
-                    ? $"KeySeq {seq.Events.Count} ev"
-                    : summary);
-                lstRecordedKeys.TopIndex = lstRecordedKeys.Items.Count - 1; // auto-scroll
-            }
+            AppendStepToUI(step, liveWorkflowSteps!.Count - 1, summary);
         }
 
         private async Task RunWorkflowPreviewAsync(Workflow wf)
@@ -1142,6 +1132,7 @@ namespace AutoPressApp
                 isRunning = false;
                 if (currentMode == RunMode.PlayingWorkflow)
                     SetMode(RunMode.Idle);
+                ReindexTreeNodes();
             }
         }
 
@@ -1185,6 +1176,170 @@ namespace AutoPressApp
             if (numLoopCount != null) numLoopCount.Enabled = chkLoop != null && chkLoop.Checked && !inf;
             if (lblLoopCount != null) lblLoopCount.Enabled = chkLoop != null && chkLoop.Checked && !inf;
             UpdateStatus(inf ? "[Loop] 無限循環" : "[Loop] 次數循環");
+        }
+        // --- TreeView 支援 ---
+        private void AppendStepToUI(AutoPressApp.Steps.Step step, int index, string summary)
+        {
+            if (tvSteps == null || !tvSteps.Visible)
+            {
+                if (lstRecordedKeys != null)
+                {
+                    lstRecordedKeys.Items.Add(summary);
+                    lstRecordedKeys.TopIndex = lstRecordedKeys.Items.Count - 1;
+                }
+                return;
+            }
+            if (index < 0) return;
+            var node = BuildStepNode(step, index);
+            tvSteps.Nodes.Add(node);
+            tvSteps.SelectedNode = node;
+            node.EnsureVisible();
+        }
+
+        private TreeNode BuildStepNode(AutoPressApp.Steps.Step step, int index)
+        {
+            string caption = step switch
+            {
+                AutoPressApp.Steps.DelayStep d => $"[{index}] Delay {d.Ms}ms",
+                AutoPressApp.Steps.KeyComboStep k => $"[{index}] KeyCombo {string.Join('+', k.Keys)}",
+                AutoPressApp.Steps.KeySequenceStep ks => $"[{index}] 按鍵序列 {ks.Events.Count} 事件",
+                AutoPressApp.Steps.MouseClickStep m => $"[{index}] Click {m.Button} ({m.X},{m.Y})",
+                AutoPressApp.Steps.FocusWindowStep f => $"[{index}] Focus '{Truncate(f.TitleContains,30)}'",
+                AutoPressApp.Steps.LogStep lg => $"[{index}] Log {Truncate(lg.Message,30)}",
+                _ => $"[{index}] {step.GetType().Name}"
+            };
+            var root = new TreeNode(caption) { Tag = index };
+            if (step is AutoPressApp.Steps.KeySequenceStep kseq)
+            {
+                int i = 0;
+                foreach (var ev in kseq.Events)
+                {
+                    root.Nodes.Add(new TreeNode($"{i++:D3}: {(ev.Down?"Down":"Up  ")} {ev.Key} (+{ev.DelayMsBefore}ms)"));
+                }
+            }
+            return root;
+        }
+
+        private void RebuildTreeView()
+        {
+            if (tvSteps == null) return;
+            tvSteps.BeginUpdate();
+            tvSteps.Nodes.Clear();
+            if (liveWorkflowSteps != null)
+            {
+                for (int i = 0; i < liveWorkflowSteps.Count; i++)
+                {
+                    tvSteps.Nodes.Add(BuildStepNode(liveWorkflowSteps[i], i));
+                }
+            }
+            tvSteps.EndUpdate();
+        }
+
+        private void ReindexTreeNodes()
+        {
+            if (tvSteps == null || liveWorkflowSteps == null) return;
+            for (int i = 0; i < tvSteps.Nodes.Count && i < liveWorkflowSteps.Count; i++)
+            {
+                var n = tvSteps.Nodes[i];
+                n.Text = BuildStepNode(liveWorkflowSteps[i], i).Text;
+                n.Tag = i;
+            }
+        }
+
+        private static string Truncate(string? s, int max)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            return s.Length <= max ? s : s.Substring(0, max - 3) + "...";
+        }
+
+        // ---- TreeView 編輯支援 ----
+        private ContextMenuStrip? tvContextMenu;
+        private void EnsureTreeViewContext()
+        {
+            if (tvSteps == null) return;
+            if (tvContextMenu != null) return;
+            tvContextMenu = new ContextMenuStrip();
+            tvContextMenu.Items.Add("編輯", null, (_, __) => EditSelectedStep());
+            tvContextMenu.Items.Add("上移", null, (_, __) => MoveSelectedStep(-1));
+            tvContextMenu.Items.Add("下移", null, (_, __) => MoveSelectedStep(1));
+            tvContextMenu.Items.Add("刪除", null, (_, __) => DeleteSelectedStep());
+            tvContextMenu.Items.Add(new ToolStripSeparator());
+            tvContextMenu.Items.Add("重新索引", null, (_, __) => ReindexTreeNodes());
+            tvSteps.ContextMenuStrip = tvContextMenu;
+            tvSteps.NodeMouseClick += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right)
+                {
+                    tvSteps.SelectedNode = e.Node;
+                }
+            };
+            tvSteps.DoubleClick += (s, e) => EditSelectedStep();
+        }
+
+        private int? GetSelectedRootIndex()
+        {
+            if (tvSteps == null || liveWorkflowSteps == null) return null;
+            var node = tvSteps.SelectedNode;
+            if (node == null) return null;
+            // 允許子節點選擇時，取其 Root
+            if (node.Parent != null) node = node.Parent;
+            if (node.Tag is int idx && idx >= 0 && idx < liveWorkflowSteps.Count) return idx;
+            // 如果 Tag 不在，根據其在根集合位置推斷
+            int pos = node.Level == 0 ? node.Index : node.Parent!.Index;
+            if (pos >= 0 && pos < liveWorkflowSteps.Count) return pos;
+            return null;
+        }
+
+        private void EditSelectedStep()
+        {
+            var idx = GetSelectedRootIndex();
+            if (idx == null || liveWorkflowSteps == null) return;
+            var step = liveWorkflowSteps[idx.Value];
+            using var dlg = new StepEditDialog(step);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                ReindexTreeNodes();
+                UpdateStatus($"[Edit] 已更新步驟 {idx.Value}");
+            }
+        }
+
+        private void MoveSelectedStep(int delta)
+        {
+            var idx = GetSelectedRootIndex();
+            if (idx == null || liveWorkflowSteps == null) return;
+            int newIndex = idx.Value + delta;
+            if (newIndex < 0 || newIndex >= liveWorkflowSteps.Count) return;
+            var tmp = liveWorkflowSteps[idx.Value];
+            liveWorkflowSteps.RemoveAt(idx.Value);
+            liveWorkflowSteps.Insert(newIndex, tmp);
+            RebuildTreeView();
+            if (tvSteps != null && newIndex < tvSteps.Nodes.Count)
+            {
+                tvSteps.SelectedNode = tvSteps.Nodes[newIndex];
+                tvSteps.Nodes[newIndex].EnsureVisible();
+            }
+            UpdateStatus($"[Edit] 步驟已移動到 {newIndex}");
+        }
+
+        private void DeleteSelectedStep()
+        {
+            var idx = GetSelectedRootIndex();
+            if (idx == null || liveWorkflowSteps == null) return;
+            if (MessageBox.Show($"確定刪除步驟 {idx}?", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                liveWorkflowSteps.RemoveAt(idx.Value);
+                RebuildTreeView();
+                btnReplay.Enabled = liveWorkflowSteps.Count > 0;
+                btnClearRecord.Enabled = liveWorkflowSteps.Count > 0;
+                UpdateStatus($"[Edit] 已刪除步驟 {idx}");
+            }
+        }
+
+        // 在表單載入完成後設定 TreeView 右鍵
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            EnsureTreeViewContext();
         }
     }
 }

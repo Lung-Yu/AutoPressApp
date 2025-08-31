@@ -47,6 +47,7 @@
             this.btnClearRecord = new System.Windows.Forms.Button();
             this.lstRecordedKeys = new System.Windows.Forms.ListBox();
             this.lblRecordedKeys = new System.Windows.Forms.Label();
+            this.tvSteps = new System.Windows.Forms.TreeView();
             this.chkLoop = new System.Windows.Forms.CheckBox();
             this.numLoopCount = new System.Windows.Forms.NumericUpDown();
             this.numLoopInterval = new System.Windows.Forms.NumericUpDown();
@@ -210,6 +211,7 @@
             // 
             this.groupBox2.Controls.Add(this.lblRecordedKeys);
             this.groupBox2.Controls.Add(this.lstRecordedKeys);
+            this.groupBox2.Controls.Add(this.tvSteps);
             this.groupBox2.Controls.Add(this.btnClearRecord);
             this.groupBox2.Controls.Add(this.btnReplay);
             this.groupBox2.Controls.Add(this.btnRecord);
@@ -384,6 +386,18 @@
             this.lstRecordedKeys.Name = "lstRecordedKeys";
             this.lstRecordedKeys.Size = new System.Drawing.Size(390, 120);
             this.lstRecordedKeys.TabIndex = 14;
+            this.lstRecordedKeys.Visible = false; // 隱藏舊清單，改用 TreeView
+
+            // tvSteps
+            //
+            this.tvSteps.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.tvSteps.Location = new System.Drawing.Point(30, 120);
+            this.tvSteps.Name = "tvSteps";
+            this.tvSteps.Size = new System.Drawing.Size(390, 120);
+            this.tvSteps.TabIndex = 35;
+            this.tvSteps.HideSelection = false;
+            this.tvSteps.FullRowSelect = true;
+            this.tvSteps.AfterSelect += (s,e)=>{}; // 佔位，邏輯於程式碼檔
             // 
             // lblRecordedKeys
             // 
@@ -529,6 +543,7 @@
     private System.Windows.Forms.TextBox txtTest;
     private System.Windows.Forms.Button btnClearTest;
     private System.Windows.Forms.CheckBox chkTestMode;
+    private System.Windows.Forms.TreeView tvSteps;
     }
 }
 
