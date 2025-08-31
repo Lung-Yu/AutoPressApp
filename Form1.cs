@@ -1263,6 +1263,12 @@ namespace AutoPressApp
             tvContextMenu.Items.Add("上移", null, (_, __) => MoveSelectedStep(-1));
             tvContextMenu.Items.Add("下移", null, (_, __) => MoveSelectedStep(1));
             tvContextMenu.Items.Add("刪除", null, (_, __) => DeleteSelectedStep());
+            // 子事件操作
+            tvContextMenu.Items.Add(new ToolStripSeparator());
+            tvContextMenu.Items.Add("編輯子事件", null, (_, __) => EditKeySequenceEvent());
+            tvContextMenu.Items.Add("刪除子事件", null, (_, __) => DeleteKeySequenceEvent());
+            tvContextMenu.Items.Add("子事件前插入", null, (_, __) => InsertKeySequenceEvent(before:true));
+            tvContextMenu.Items.Add("子事件後插入", null, (_, __) => InsertKeySequenceEvent(before:false));
             tvContextMenu.Items.Add(new ToolStripSeparator());
             tvContextMenu.Items.Add("重新索引", null, (_, __) => ReindexTreeNodes());
             tvSteps.ContextMenuStrip = tvContextMenu;
@@ -1340,6 +1346,73 @@ namespace AutoPressApp
         {
             base.OnLoad(e);
             EnsureTreeViewContext();
+        }
+
+        // ---- KeySequence 子事件編輯 ----
+    private (AutoPressApp.Steps.KeySequenceStep step, int eventIndex)? GetSelectedKeySequenceEvent()
+        {
+            if (tvSteps == null || liveWorkflowSteps == null) return null;
+            var node = tvSteps.SelectedNode;
+            if (node == null) return null;
+            if (node.Parent == null) return null; // 根節點不是子事件
+            // 父節點 index 對應步驟
+            int stepIdx = node.Parent.Index;
+            if (stepIdx < 0 || stepIdx >= liveWorkflowSteps.Count) return null;
+            if (liveWorkflowSteps[stepIdx] is AutoPressApp.Steps.KeySequenceStep ks)
+            {
+                int childIdx = node.Index;
+                if (childIdx >= 0 && childIdx < ks.Events.Count)
+                    return (ks, childIdx);
+            }
+            return null;
+        }
+
+        private void EditKeySequenceEvent()
+        {
+            var info = GetSelectedKeySequenceEvent();
+            if (info == null) return;
+            var (ks, idx) = info.Value;
+            var item = ks.Events[idx];
+            using var dlg = new KeyEventEditDialog(item, idx);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                RebuildTreeView();
+                UpdateStatus($"[Edit] 已更新子事件 {idx}");
+            }
+        }
+
+        private void DeleteKeySequenceEvent()
+        {
+            var info = GetSelectedKeySequenceEvent();
+            if (info == null) return;
+            var (ks, idx) = info.Value;
+            if (MessageBox.Show($"刪除子事件 {idx}?", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                ks.Events.RemoveAt(idx);
+                RebuildTreeView();
+                UpdateStatus($"[Edit] 已刪除子事件 {idx}");
+            }
+        }
+
+        private void InsertKeySequenceEvent(bool before)
+        {
+            var info = GetSelectedKeySequenceEvent();
+            if (info == null) return;
+            var (ks, idx) = info.Value;
+            int insertIdx = before ? idx : idx + 1;
+            var newItem = new AutoPressApp.Steps.KeyEventItem { Key = "A", Down = true, DelayMsBefore = 0 };
+            ks.Events.Insert(insertIdx, newItem);
+            using var dlg = new KeyEventEditDialog(newItem, insertIdx);
+            if (dlg.ShowDialog(this) == DialogResult.OK)
+            {
+                RebuildTreeView();
+                UpdateStatus($"[Edit] 已插入子事件 {insertIdx}");
+            }
+            else
+            {
+                // 取消則移除
+                ks.Events.Remove(newItem);
+            }
         }
     }
 }
