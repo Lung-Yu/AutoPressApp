@@ -48,6 +48,10 @@
             this.lstRecordedKeys = new System.Windows.Forms.ListBox();
             this.lblRecordedKeys = new System.Windows.Forms.Label();
             this.chkLoop = new System.Windows.Forms.CheckBox();
+            this.numLoopCount = new System.Windows.Forms.NumericUpDown();
+            this.numLoopInterval = new System.Windows.Forms.NumericUpDown();
+            this.lblLoopCount = new System.Windows.Forms.Label();
+            this.lblLoopInterval = new System.Windows.Forms.Label();
             this.btnExport = new System.Windows.Forms.Button();
             this.btnImport = new System.Windows.Forms.Button();
             this.cmbSpeed = new System.Windows.Forms.ComboBox();
@@ -209,6 +213,10 @@
             this.groupBox2.Controls.Add(this.btnClearRecord);
             this.groupBox2.Controls.Add(this.btnReplay);
             this.groupBox2.Controls.Add(this.btnRecord);
+            this.groupBox2.Controls.Add(this.lblLoopInterval);
+            this.groupBox2.Controls.Add(this.numLoopInterval);
+            this.groupBox2.Controls.Add(this.lblLoopCount);
+            this.groupBox2.Controls.Add(this.numLoopCount);
             this.groupBox2.Controls.Add(this.chkLoop);
             this.groupBox2.Controls.Add(this.btnExport);
             this.groupBox2.Controls.Add(this.btnImport);
@@ -372,7 +380,7 @@
             this.lstRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.lstRecordedKeys.FormattingEnabled = true;
             this.lstRecordedKeys.ItemHeight = 16;
-            this.lstRecordedKeys.Location = new System.Drawing.Point(30, 100);
+            this.lstRecordedKeys.Location = new System.Drawing.Point(30, 120);
             this.lstRecordedKeys.Name = "lstRecordedKeys";
             this.lstRecordedKeys.Size = new System.Drawing.Size(390, 120);
             this.lstRecordedKeys.TabIndex = 14;
@@ -381,7 +389,7 @@
             // 
             this.lblRecordedKeys.AutoSize = true;
             this.lblRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.lblRecordedKeys.Location = new System.Drawing.Point(30, 80);
+            this.lblRecordedKeys.Location = new System.Drawing.Point(30, 100);
             this.lblRecordedKeys.Name = "lblRecordedKeys";
             this.lblRecordedKeys.Size = new System.Drawing.Size(93, 18);
             this.lblRecordedKeys.TabIndex = 15;
@@ -391,12 +399,68 @@
             // 
             this.chkLoop.AutoSize = true;
             this.chkLoop.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.chkLoop.Location = new System.Drawing.Point(380, 40);
+            this.chkLoop.Location = new System.Drawing.Point(30, 70);
             this.chkLoop.Name = "chkLoop";
             this.chkLoop.Size = new System.Drawing.Size(51, 20);
             this.chkLoop.TabIndex = 16;
             this.chkLoop.Text = "循環";
             this.chkLoop.UseVisualStyleBackColor = true;
+            this.chkLoop.CheckedChanged += new System.EventHandler(this.chkLoop_CheckedChanged);
+
+            // numLoopCount
+            this.numLoopCount.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.numLoopCount.Location = new System.Drawing.Point(120, 68);
+            this.numLoopCount.Minimum = new decimal(new int[] {1,0,0,0});
+            this.numLoopCount.Maximum = new decimal(new int[] {2147483647,0,0,0});
+            this.numLoopCount.Name = "numLoopCount";
+            this.numLoopCount.Size = new System.Drawing.Size(70, 23);
+            this.numLoopCount.TabIndex = 30;
+            this.numLoopCount.Value = new decimal(new int[] {1,0,0,0});
+            this.numLoopCount.Enabled = false;
+
+            // lblLoopCount
+            this.lblLoopCount.AutoSize = true;
+            this.lblLoopCount.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.lblLoopCount.Location = new System.Drawing.Point(85, 72);
+            this.lblLoopCount.Name = "lblLoopCount";
+            this.lblLoopCount.Size = new System.Drawing.Size(35, 16);
+            this.lblLoopCount.TabIndex = 31;
+            this.lblLoopCount.Text = "次數";
+            this.lblLoopCount.Enabled = false;
+
+            // numLoopInterval
+            this.numLoopInterval.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.numLoopInterval.Location = new System.Drawing.Point(270, 68);
+            this.numLoopInterval.Increment = new decimal(new int[] {100,0,0,0});
+            this.numLoopInterval.Maximum = new decimal(new int[] {2147483647,0,0,0});
+            this.numLoopInterval.Name = "numLoopInterval";
+            this.numLoopInterval.Size = new System.Drawing.Size(80, 23);
+            this.numLoopInterval.TabIndex = 32;
+            this.numLoopInterval.Value = new decimal(new int[] {1000,0,0,0});
+            this.numLoopInterval.Enabled = false;
+
+            // lblLoopInterval
+            this.lblLoopInterval.AutoSize = true;
+            this.lblLoopInterval.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.lblLoopInterval.Location = new System.Drawing.Point(200, 72);
+            this.lblLoopInterval.Name = "lblLoopInterval";
+            this.lblLoopInterval.Size = new System.Drawing.Size(73, 16);
+            this.lblLoopInterval.TabIndex = 33;
+            this.lblLoopInterval.Text = "間隔(ms)";
+            this.lblLoopInterval.Enabled = false;
+
+            // chkLoopInfinite
+            this.chkLoopInfinite = new System.Windows.Forms.CheckBox();
+            this.chkLoopInfinite.AutoSize = true;
+            this.chkLoopInfinite.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.chkLoopInfinite.Location = new System.Drawing.Point(360, 70);
+            this.chkLoopInfinite.Name = "chkLoopInfinite";
+            this.chkLoopInfinite.Size = new System.Drawing.Size(51, 20);
+            this.chkLoopInfinite.TabIndex = 34;
+            this.chkLoopInfinite.Text = "無限";
+            this.chkLoopInfinite.UseVisualStyleBackColor = true;
+            this.chkLoopInfinite.CheckedChanged += new System.EventHandler(this.chkLoopInfinite_CheckedChanged);
+            this.groupBox2.Controls.Add(this.chkLoopInfinite);
             // 
             // Form1
             // 
@@ -450,6 +514,11 @@
         private System.Windows.Forms.ListBox lstRecordedKeys;
         private System.Windows.Forms.Label lblRecordedKeys;
     private System.Windows.Forms.CheckBox chkLoop;
+    private System.Windows.Forms.NumericUpDown numLoopCount;
+    private System.Windows.Forms.NumericUpDown numLoopInterval;
+    private System.Windows.Forms.Label lblLoopCount;
+    private System.Windows.Forms.Label lblLoopInterval;
+    private System.Windows.Forms.CheckBox chkLoopInfinite;
     private System.Windows.Forms.GroupBox groupBoxHelp;
     private System.Windows.Forms.RichTextBox rtbHelp;
     private System.Windows.Forms.Button btnExport;

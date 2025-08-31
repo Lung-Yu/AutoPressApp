@@ -17,5 +17,7 @@ namespace AutoPressApp.Steps
         public Services.InputService Input { get; } = new Services.InputService();
         public Services.LogService Log { get; } = new Services.LogService();
         public System.Threading.CancellationToken CancellationToken { get; set; }
+    // Playback speed multiplier (1.0 = normal). >1.0 means faster (delays shortened), <1.0 slower.
+    public double DelayMultiplier { get; set; } = 1.0;
     }
 }

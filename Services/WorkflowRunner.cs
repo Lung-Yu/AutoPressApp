@@ -11,11 +11,18 @@ namespace AutoPressApp.Services
     {
         public event Action<int, Step>? OnStepExecuting;
         private readonly LogService _log;
-        public WorkflowRunner(LogService log) => _log = log;
+        public double PlaybackSpeed { get; set; } = 1.0; // 1.0=normal, 2.0=2x speed (half delays)
+
+        public WorkflowRunner(LogService log, double playbackSpeed = 1.0)
+        {
+            _log = log;
+            if (playbackSpeed <= 0) playbackSpeed = 1.0;
+            PlaybackSpeed = playbackSpeed;
+        }
 
         public async Task RunAsync(Workflow wf, CancellationToken ct)
         {
-            var ctx = new StepContext { CancellationToken = ct };
+            var ctx = new StepContext { CancellationToken = ct, DelayMultiplier = PlaybackSpeed };
             ctx.Log.OnLog += m => _log.Info(m);
 
             int loops = wf.LoopEnabled ? (wf.LoopCount ?? int.MaxValue) : 1;

@@ -974,7 +974,7 @@ namespace AutoPressApp
                 var wf = WorkflowRunner.LoadFromJson(json);
                 var log = new LogService();
                 log.OnLog += (m) => UpdateStatus(m);
-                var runner = new WorkflowRunner(log);
+                var runner = new WorkflowRunner(log, delayMultiplier);
                 workflowCts?.Cancel();
                 workflowCts = new CancellationTokenSource();
                 await runner.RunAsync(wf, workflowCts.Token);
@@ -1089,7 +1089,30 @@ namespace AutoPressApp
         {
             var log = new LogService();
             log.OnLog += m => UpdateStatus(m);
-            var runner = new WorkflowRunner(log);
+            var runner = new WorkflowRunner(log, delayMultiplier);
+            // Apply loop settings from UI if enabled
+            try
+            {
+                if (chkLoop != null && chkLoop.Checked)
+                {
+                    wf.LoopEnabled = true;
+                    if (chkLoopInfinite != null && chkLoopInfinite.Checked)
+                    {
+                        wf.LoopCount = null; // interpreted as infinite loops (runner uses int.MaxValue)
+                    }
+                    else if (numLoopCount != null)
+                    {
+                        wf.LoopCount = (int)numLoopCount.Value;
+                    }
+                    if (numLoopInterval != null)
+                        wf.LoopIntervalMs = (int)numLoopInterval.Value;
+                }
+                else
+                {
+                    wf.LoopEnabled = false;
+                }
+            }
+            catch { }
             runner.OnStepExecuting += (idx, step) =>
             {
                 if (lstRecordedKeys != null && idx >= 0 && idx < lstRecordedKeys.Items.Count)
@@ -1143,6 +1166,25 @@ namespace AutoPressApp
                 });
             }
             workflowMenu.Show(btnWorkflowMenu, new System.Drawing.Point(0, btnWorkflowMenu.Height));
+        }
+
+        private void chkLoop_CheckedChanged(object? sender, EventArgs e)
+        {
+            bool en = chkLoop.Checked;
+            if (numLoopCount != null) { numLoopCount.Enabled = en; }
+            if (numLoopInterval != null) { numLoopInterval.Enabled = en; }
+            if (lblLoopCount != null) { lblLoopCount.Enabled = en; }
+            if (lblLoopInterval != null) { lblLoopInterval.Enabled = en; }
+            UpdateStatus(en ? "[Loop] 循環已啟用" : "[Loop] 循環已停用");
+        }
+
+        private void chkLoopInfinite_CheckedChanged(object? sender, EventArgs e)
+        {
+            if (chkLoopInfinite == null) return;
+            bool inf = chkLoopInfinite.Checked;
+            if (numLoopCount != null) numLoopCount.Enabled = chkLoop != null && chkLoop.Checked && !inf;
+            if (lblLoopCount != null) lblLoopCount.Enabled = chkLoop != null && chkLoop.Checked && !inf;
+            UpdateStatus(inf ? "[Loop] 無限循環" : "[Loop] 次數循環");
         }
     }
 }
