@@ -9,6 +9,7 @@ namespace AutoPressApp.Services
 {
     public class WorkflowRunner
     {
+        public event Action<int, Step>? OnStepExecuting;
         private readonly LogService _log;
         public WorkflowRunner(LogService log) => _log = log;
 
@@ -21,10 +22,12 @@ namespace AutoPressApp.Services
             for (int i = 0; i < loops && !ct.IsCancellationRequested; i++)
             {
                 _log.Info($"[Workflow] Run '{wf.Name}' loop {i + 1}/{loops}");
-                foreach (var step in wf.Steps)
+                for (int stepIdx = 0; stepIdx < wf.Steps.Count; stepIdx++)
                 {
+                    var step = wf.Steps[stepIdx];
                     if (!step.Enabled) continue;
                     ct.ThrowIfCancellationRequested();
+                    OnStepExecuting?.Invoke(stepIdx, step);
                     await step.ExecuteAsync(ctx);
                 }
                 if (wf.LoopEnabled && wf.LoopIntervalMs > 0)

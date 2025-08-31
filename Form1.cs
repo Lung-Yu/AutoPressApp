@@ -1312,6 +1312,15 @@ namespace AutoPressApp
             var log = new LogService();
             log.OnLog += m => UpdateStatus(m);
             var runner = new WorkflowRunner(log);
+            runner.OnStepExecuting += (idx, step) =>
+            {
+                if (lstRecordedKeys != null && idx >= 0 && idx < lstRecordedKeys.Items.Count)
+                {
+                    lstRecordedKeys.SelectedIndex = idx;
+                    lstRecordedKeys.Refresh();
+                }
+                UpdateStatus($"[Preview] 執行步驟 {idx + 1}/{wf.Steps.Count}: {step.GetType().Name}");
+            };
             workflowCts?.Cancel();
             workflowCts = new CancellationTokenSource();
             try
