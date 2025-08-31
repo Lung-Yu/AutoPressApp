@@ -61,6 +61,9 @@ namespace AutoPressApp.Services
 
         private (string? Button, POINT Pt, DateTime Time)? _pendingDown;
 
+    // 自身行程名稱，用於忽略本程式視窗的 Focus 事件
+    private readonly string _selfProcessName = Process.GetCurrentProcess().ProcessName;
+
     public event Action<string>? OnLog;
     public event Action<Step, string>? StepCaptured;
     public event Action? OnStopped;
@@ -132,6 +135,13 @@ namespace AutoPressApp.Services
 
             string title = ReadWindowTitle(hwnd);
             string? procName = ReadProcessName(hwnd);
+            // 忽略本程式視窗的 Focus (避免錄進第一步 Focus 自己)
+            if (!string.IsNullOrEmpty(procName) &&
+                string.Equals(procName, _selfProcessName, StringComparison.OrdinalIgnoreCase))
+            {
+                _lastWindow = hwnd; // 更新最後視窗，讓切換到其他視窗時仍會記錄
+                return;
+            }
             var focusStep = new FocusWindowStep { TitleContains = string.IsNullOrWhiteSpace(title) ? null : title, ProcessName = procName, TimeoutMs = 5000 };
             _steps.Add(focusStep);
             _lastWindow = hwnd;
