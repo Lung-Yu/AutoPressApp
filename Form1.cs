@@ -222,6 +222,7 @@ namespace AutoPressApp
         {
             InitializeComponent();
             LoadRunningApplications();
+            LoadSavedWorkflowList();
             
             // 初始化鍵盤鉤子
             hookProc = HookCallback;
@@ -802,6 +803,128 @@ namespace AutoPressApp
             if (btnRecord != null) btnRecord.Enabled = true;
             SetMode(RunMode.Idle);
             UpdateStatus("[LOG] 所有狀態已重置");
+        }
+
+        // ===== Saved Workflow Management =====
+        private void LoadSavedWorkflowList()
+        {
+            try
+            {
+                if (cmbSavedWorkflows == null) return;
+                var items = WorkflowStorage.List();
+                cmbSavedWorkflows.Items.Clear();
+                foreach (var info in items)
+                {
+                    cmbSavedWorkflows.Items.Add(info.Name);
+                }
+                if (cmbSavedWorkflows.Items.Count > 0) cmbSavedWorkflows.SelectedIndex = 0;
+                UpdateStatus($"[SavedWF] 已載入 {cmbSavedWorkflows.Items.Count} 個已儲存流程");
+            }
+            catch (Exception ex)
+            {
+                UpdateStatus("[SavedWF] 載入清單失敗: " + ex.Message);
+            }
+        }
+
+        private void cmbSavedWorkflows_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            // 僅選擇，不自動載入執行
+        }
+
+        private void btnRefreshSaved_Click(object? sender, EventArgs e)
+        {
+            LoadSavedWorkflowList();
+        }
+
+        private void btnLoadSaved_Click(object? sender, EventArgs e)
+        {
+            if (cmbSavedWorkflows == null || cmbSavedWorkflows.SelectedItem == null) return;
+            string name = cmbSavedWorkflows.SelectedItem.ToString()!;
+            var wf = WorkflowStorage.Load(name);
+            if (wf == null)
+            {
+                MessageBox.Show("載入失敗或檔案不存在", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            liveWorkflowSteps = new List<AutoPressApp.Steps.Step>(wf.Steps);
+            RebuildTreeView();
+            // 同步 Loop 設定
+            if (chkLoop != null) chkLoop.Checked = wf.LoopEnabled;
+            if (wf.LoopEnabled)
+            {
+                if (chkLoopInfinite != null) chkLoopInfinite.Checked = wf.LoopCount == null;
+                if (wf.LoopCount != null && numLoopCount != null) numLoopCount.Value = Math.Min(numLoopCount.Maximum, Math.Max(numLoopCount.Minimum, wf.LoopCount.Value));
+                if (numLoopInterval != null) numLoopInterval.Value = Math.Min(numLoopInterval.Maximum, Math.Max(numLoopInterval.Minimum, (decimal)wf.LoopIntervalMs / 1000m));
+            }
+            btnReplay.Enabled = liveWorkflowSteps.Count > 0;
+            btnClearRecord.Enabled = liveWorkflowSteps.Count > 0;
+            UpdateStatus($"[SavedWF] 已載入流程: {name} (步驟 {liveWorkflowSteps.Count})");
+        }
+
+        private void btnSaveCurrent_Click(object? sender, EventArgs e)
+        {
+            if (liveWorkflowSteps == null || liveWorkflowSteps.Count == 0)
+            {
+                MessageBox.Show("目前沒有流程步驟可儲存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            string name = PromptForWorkflowName();
+            if (string.IsNullOrWhiteSpace(name)) return;
+            var wf = new Workflow
+            {
+                Name = name.Trim(),
+                Steps = new List<AutoPressApp.Steps.Step>(liveWorkflowSteps),
+                LoopEnabled = chkLoop != null && chkLoop.Checked,
+                LoopCount = (chkLoop != null && chkLoop.Checked && chkLoopInfinite != null && chkLoopInfinite.Checked) ? (int?)null : (chkLoop != null && chkLoop.Checked ? (int?)numLoopCount.Value : null),
+                LoopIntervalMs = (chkLoop != null && chkLoop.Checked && numLoopInterval != null) ? (int)(numLoopInterval.Value * 1000m) : 1000
+            };
+            try
+            {
+                bool overwrite = false;
+                var existing = WorkflowStorage.Load(wf.Name);
+                if (existing != null)
+                {
+                    if (MessageBox.Show("同名流程已存在，是否覆蓋?", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                        return;
+                    overwrite = true;
+                }
+                WorkflowStorage.Save(wf);
+                LoadSavedWorkflowList();
+                // 選回剛儲存的
+                if (cmbSavedWorkflows != null)
+                {
+                    int idx = cmbSavedWorkflows.Items.IndexOf(wf.Name);
+                    if (idx >= 0) cmbSavedWorkflows.SelectedIndex = idx;
+                }
+                UpdateStatus($"[SavedWF] {(overwrite ? "覆蓋" : "新增")}已儲存: {wf.Name}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("儲存失敗: " + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnDeleteSaved_Click(object? sender, EventArgs e)
+        {
+            if (cmbSavedWorkflows == null || cmbSavedWorkflows.SelectedItem == null) return;
+            string name = cmbSavedWorkflows.SelectedItem.ToString()!;
+            if (MessageBox.Show($"刪除已儲存流程 '{name}'?", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+            if (WorkflowStorage.Delete(name))
+            {
+                UpdateStatus($"[SavedWF] 已刪除: {name}");
+                LoadSavedWorkflowList();
+            }
+            else
+            {
+                MessageBox.Show("刪除失敗或檔案不存在", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private string PromptForWorkflowName()
+        {
+            using var input = new InputBoxDialog("輸入流程名稱", "請輸入要儲存的流程名稱:");
+            return input.ShowDialog(this) == DialogResult.OK ? input.ResultText : string.Empty;
         }
 
         private void btnRefresh_Click(object sender, EventArgs e)

@@ -212,6 +212,52 @@
             this.groupBox2.Controls.Add(this.lblLoopCount);
             this.groupBox2.Controls.Add(this.numLoopCount);
             this.groupBox2.Controls.Add(this.chkLoop);
+            // 新增已儲存流程區域
+            this.cmbSavedWorkflows = new System.Windows.Forms.ComboBox();
+            this.cmbSavedWorkflows.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbSavedWorkflows.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.cmbSavedWorkflows.Location = new System.Drawing.Point(30, 135);
+            this.cmbSavedWorkflows.Name = "cmbSavedWorkflows";
+            this.cmbSavedWorkflows.Size = new System.Drawing.Size(150, 24);
+            this.cmbSavedWorkflows.TabIndex = 37;
+            this.cmbSavedWorkflows.SelectedIndexChanged += new System.EventHandler(this.cmbSavedWorkflows_SelectedIndexChanged);
+            this.groupBox2.Controls.Add(this.cmbSavedWorkflows);
+            this.btnLoadSaved = new System.Windows.Forms.Button();
+            this.btnLoadSaved.Font = new System.Drawing.Font("Microsoft JhengHei", 8F);
+            this.btnLoadSaved.Location = new System.Drawing.Point(185, 135);
+            this.btnLoadSaved.Name = "btnLoadSaved";
+            this.btnLoadSaved.Size = new System.Drawing.Size(55, 24);
+            this.btnLoadSaved.Text = "載入";
+            this.btnLoadSaved.UseVisualStyleBackColor = true;
+            this.btnLoadSaved.Click += new System.EventHandler(this.btnLoadSaved_Click);
+            this.groupBox2.Controls.Add(this.btnLoadSaved);
+            this.btnSaveCurrent = new System.Windows.Forms.Button();
+            this.btnSaveCurrent.Font = new System.Drawing.Font("Microsoft JhengHei", 8F);
+            this.btnSaveCurrent.Location = new System.Drawing.Point(245, 135);
+            this.btnSaveCurrent.Name = "btnSaveCurrent";
+            this.btnSaveCurrent.Size = new System.Drawing.Size(55, 24);
+            this.btnSaveCurrent.Text = "儲存";
+            this.btnSaveCurrent.UseVisualStyleBackColor = true;
+            this.btnSaveCurrent.Click += new System.EventHandler(this.btnSaveCurrent_Click);
+            this.groupBox2.Controls.Add(this.btnSaveCurrent);
+            this.btnDeleteSaved = new System.Windows.Forms.Button();
+            this.btnDeleteSaved.Font = new System.Drawing.Font("Microsoft JhengHei", 8F);
+            this.btnDeleteSaved.Location = new System.Drawing.Point(305, 135);
+            this.btnDeleteSaved.Name = "btnDeleteSaved";
+            this.btnDeleteSaved.Size = new System.Drawing.Size(55, 24);
+            this.btnDeleteSaved.Text = "刪除";
+            this.btnDeleteSaved.UseVisualStyleBackColor = true;
+            this.btnDeleteSaved.Click += new System.EventHandler(this.btnDeleteSaved_Click);
+            this.groupBox2.Controls.Add(this.btnDeleteSaved);
+            this.btnRefreshSaved = new System.Windows.Forms.Button();
+            this.btnRefreshSaved.Font = new System.Drawing.Font("Microsoft JhengHei", 8F);
+            this.btnRefreshSaved.Location = new System.Drawing.Point(365, 135);
+            this.btnRefreshSaved.Name = "btnRefreshSaved";
+            this.btnRefreshSaved.Size = new System.Drawing.Size(55, 24);
+            this.btnRefreshSaved.Text = "更新";
+            this.btnRefreshSaved.UseVisualStyleBackColor = true;
+            this.btnRefreshSaved.Click += new System.EventHandler(this.btnRefreshSaved_Click);
+            this.groupBox2.Controls.Add(this.btnRefreshSaved);
             this.groupBox2.Controls.Add(this.btnExport);
             this.groupBox2.Controls.Add(this.btnImport);
             this.groupBox2.Controls.Add(this.cmbSpeed);
@@ -219,7 +265,7 @@
             this.groupBox2.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox2.Location = new System.Drawing.Point(30, 210);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(450, 270);
+            this.groupBox2.Size = new System.Drawing.Size(450, 330);
             this.groupBox2.TabIndex = 10;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "按鍵記錄與回放";
@@ -239,7 +285,7 @@
             // 
             this.btnExport.Enabled = true;
             this.btnExport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnExport.Location = new System.Drawing.Point(30, 210);
+            this.btnExport.Location = new System.Drawing.Point(30, 240);
             this.btnExport.Name = "btnExport";
             this.btnExport.Size = new System.Drawing.Size(80, 25);
             this.btnExport.TabIndex = 17;
@@ -251,7 +297,7 @@
             // 
             this.btnImport.Enabled = true;
             this.btnImport.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnImport.Location = new System.Drawing.Point(120, 210);
+            this.btnImport.Location = new System.Drawing.Point(120, 240);
             this.btnImport.Name = "btnImport";
             this.btnImport.Size = new System.Drawing.Size(80, 25);
             this.btnImport.TabIndex = 18;
@@ -265,7 +311,7 @@
             this.cmbSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.cmbSpeed.FormattingEnabled = true;
             this.cmbSpeed.Items.AddRange(new object[] {"0.05x","0.1x","0.2x","0.5x","1.0x","1.5x","2.0x","3.0x","4.0x","5.0x","6.0x","8.0x","10.0x"});
-            this.cmbSpeed.Location = new System.Drawing.Point(330, 235);
+            this.cmbSpeed.Location = new System.Drawing.Point(330, 240);
             this.cmbSpeed.Name = "cmbSpeed";
             this.cmbSpeed.Size = new System.Drawing.Size(90, 24);
             this.cmbSpeed.TabIndex = 19;
@@ -276,7 +322,7 @@
             // 
             this.lblSpeed.AutoSize = true;
             this.lblSpeed.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.lblSpeed.Location = new System.Drawing.Point(250, 239);
+            this.lblSpeed.Location = new System.Drawing.Point(250, 244);
             this.lblSpeed.Name = "lblSpeed";
             this.lblSpeed.Size = new System.Drawing.Size(79, 16);
             this.lblSpeed.TabIndex = 20;
@@ -286,7 +332,7 @@
             // 
             this.groupBoxHelp.Controls.Add(this.rtbHelp);
             this.groupBoxHelp.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.groupBoxHelp.Location = new System.Drawing.Point(30, 490);
+            this.groupBoxHelp.Location = new System.Drawing.Point(30, 520);
             this.groupBoxHelp.Name = "groupBoxHelp";
             this.groupBoxHelp.Size = new System.Drawing.Size(620, 160);
             this.groupBoxHelp.TabIndex = 17;
@@ -300,7 +346,7 @@
             this.groupBoxTest.Controls.Add(this.btnClearTest);
             this.groupBoxTest.Controls.Add(this.txtTest);
             this.groupBoxTest.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.groupBoxTest.Location = new System.Drawing.Point(30, 670);
+            this.groupBoxTest.Location = new System.Drawing.Point(30, 700);
             this.groupBoxTest.Name = "groupBoxTest";
             this.groupBoxTest.Size = new System.Drawing.Size(620, 140);
             this.groupBoxTest.TabIndex = 21;
@@ -385,7 +431,7 @@
             this.lstRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.lstRecordedKeys.FormattingEnabled = true;
             this.lstRecordedKeys.ItemHeight = 16;
-            this.lstRecordedKeys.Location = new System.Drawing.Point(30, 120);
+            this.lstRecordedKeys.Location = new System.Drawing.Point(30, 160);
             this.lstRecordedKeys.Name = "lstRecordedKeys";
             this.lstRecordedKeys.Size = new System.Drawing.Size(390, 120);
             this.lstRecordedKeys.TabIndex = 14;
@@ -394,9 +440,9 @@
             // tvSteps
             //
             this.tvSteps.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.tvSteps.Location = new System.Drawing.Point(30, 120);
+            this.tvSteps.Location = new System.Drawing.Point(30, 160);
             this.tvSteps.Name = "tvSteps";
-            this.tvSteps.Size = new System.Drawing.Size(390, 120);
+            this.tvSteps.Size = new System.Drawing.Size(390, 140);
             this.tvSteps.TabIndex = 35;
             this.tvSteps.HideSelection = false;
             this.tvSteps.FullRowSelect = true;
@@ -406,11 +452,11 @@
             // 
             this.lblRecordedKeys.AutoSize = true;
             this.lblRecordedKeys.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
-            this.lblRecordedKeys.Location = new System.Drawing.Point(30, 100);
+            this.lblRecordedKeys.Location = new System.Drawing.Point(30, 110);
             this.lblRecordedKeys.Name = "lblRecordedKeys";
-            this.lblRecordedKeys.Size = new System.Drawing.Size(93, 18);
+            this.lblRecordedKeys.Size = new System.Drawing.Size(126, 18);
             this.lblRecordedKeys.TabIndex = 15;
-            this.lblRecordedKeys.Text = "記錄的按鍵:";
+            this.lblRecordedKeys.Text = "錄製的流程步驟:";
             // 
             // chkLoop
             // 
@@ -485,7 +531,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(680, 860);
+            this.ClientSize = new System.Drawing.Size(680, 900);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.lblClock);
@@ -550,6 +596,11 @@
     private System.Windows.Forms.CheckBox chkTestMode;
     private System.Windows.Forms.TreeView tvSteps;
     private System.Windows.Forms.Label lblClock;
+    private System.Windows.Forms.ComboBox cmbSavedWorkflows;
+    private System.Windows.Forms.Button btnLoadSaved;
+    private System.Windows.Forms.Button btnSaveCurrent;
+    private System.Windows.Forms.Button btnDeleteSaved;
+    private System.Windows.Forms.Button btnRefreshSaved;
     }
 }
 
