@@ -442,15 +442,17 @@
             this.lblLoopCount.Text = "次數";
             this.lblLoopCount.Enabled = false;
 
-            // numLoopInterval
+            // numLoopInterval (seconds)
             this.numLoopInterval.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
             this.numLoopInterval.Location = new System.Drawing.Point(270, 68);
-            this.numLoopInterval.Increment = new decimal(new int[] {100,0,0,0});
-            this.numLoopInterval.Maximum = new decimal(new int[] {2147483647,0,0,0});
+            this.numLoopInterval.DecimalPlaces = 2;
+            this.numLoopInterval.Increment = new decimal(new int[] {5,0,0,131072}); // 0.05
+            this.numLoopInterval.Maximum = new decimal(new int[] {86400,0,0,0}); // up to 1 day
+            this.numLoopInterval.Minimum = new decimal(new int[] {1,0,0,131072}); // 0.01s
             this.numLoopInterval.Name = "numLoopInterval";
             this.numLoopInterval.Size = new System.Drawing.Size(80, 23);
             this.numLoopInterval.TabIndex = 32;
-            this.numLoopInterval.Value = new decimal(new int[] {1000,0,0,0});
+            this.numLoopInterval.Value = new decimal(new int[] {1,0,0,0}); // 1.00 second default
             this.numLoopInterval.Enabled = false;
 
             // lblLoopInterval
@@ -460,7 +462,7 @@
             this.lblLoopInterval.Name = "lblLoopInterval";
             this.lblLoopInterval.Size = new System.Drawing.Size(73, 16);
             this.lblLoopInterval.TabIndex = 33;
-            this.lblLoopInterval.Text = "間隔(ms)";
+            this.lblLoopInterval.Text = "間隔(秒)";
             this.lblLoopInterval.Enabled = false;
 
             // chkLoopInfinite

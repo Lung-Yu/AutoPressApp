@@ -1095,7 +1095,10 @@ namespace AutoPressApp
                         wf.LoopCount = (int)numLoopCount.Value;
                     }
                     if (numLoopInterval != null)
-                        wf.LoopIntervalMs = (int)numLoopInterval.Value;
+                    {
+                        // 使用者以秒輸入，轉成毫秒
+                        wf.LoopIntervalMs = (int)(numLoopInterval.Value * 1000m);
+                    }
                 }
                 else
                 {
