@@ -32,7 +32,7 @@
             this.lblStartInfo = new System.Windows.Forms.Label();
             this.btnWorkflowRecord = new System.Windows.Forms.Button(); // legacy (hidden)
             this.btnWorkflowRun = new System.Windows.Forms.Button();    // legacy (hidden)
-            this.btnWorkflowMenu = new System.Windows.Forms.Button();
+            // (移除 btnWorkflowMenu)
             // 移除單鍵/間隔相關控制項
             this.lblStatus = new System.Windows.Forms.Label();
             this.lblMode = new System.Windows.Forms.Label();
@@ -104,16 +104,7 @@
             this.btnWorkflowRecord.UseVisualStyleBackColor = true;
             this.btnWorkflowRecord.Visible = false; // replaced by menu button
 
-            // btnWorkflowMenu
-            //
-            this.btnWorkflowMenu.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
-            this.btnWorkflowMenu.Location = new System.Drawing.Point(500, 210);
-            this.btnWorkflowMenu.Name = "btnWorkflowMenu";
-            this.btnWorkflowMenu.Size = new System.Drawing.Size(150, 63);
-            this.btnWorkflowMenu.TabIndex = 28;
-            this.btnWorkflowMenu.Text = "流程功能 ▼";
-            this.btnWorkflowMenu.UseVisualStyleBackColor = true;
-            this.btnWorkflowMenu.Click += new System.EventHandler(this.btnWorkflowMenu_Click);
+            // (btnWorkflowMenu 已移除)
             // 
             // lblStartInfo
             // 
@@ -215,6 +206,7 @@
             this.groupBox2.Controls.Add(this.btnClearRecord);
             this.groupBox2.Controls.Add(this.btnReplay);
             this.groupBox2.Controls.Add(this.btnRecord);
+            // lblClock 從 groupBox2 移除，改放主視窗右側
             this.groupBox2.Controls.Add(this.lblLoopInterval);
             this.groupBox2.Controls.Add(this.numLoopInterval);
             this.groupBox2.Controls.Add(this.lblLoopCount);
@@ -231,6 +223,17 @@
             this.groupBox2.TabIndex = 10;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "按鍵記錄與回放";
+            // 
+            // lblClock (右側資訊面板)
+            this.lblClock = new System.Windows.Forms.Label();
+            this.lblClock.AutoSize = false;
+            this.lblClock.Font = new System.Drawing.Font("Consolas", 11F, System.Drawing.FontStyle.Bold);
+            this.lblClock.Location = new System.Drawing.Point(500, 210);
+            this.lblClock.Name = "lblClock";
+            this.lblClock.Size = new System.Drawing.Size(150, 140);
+            this.lblClock.TabIndex = 36;
+            this.lblClock.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lblClock.Text = "Now --:--:--\nElapsed 00:00:00\nLoop -/-\nStep -/-\nNext --";
             // 
             // btnExport
             // 
@@ -485,7 +488,7 @@
             this.ClientSize = new System.Drawing.Size(680, 860);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.btnWorkflowMenu);
+            this.Controls.Add(this.lblClock);
             this.Controls.Add(this.btnStart);
             this.Controls.Add(this.lblStartInfo);
             this.Controls.Add(this.lblStatus);
@@ -516,7 +519,7 @@
         private System.Windows.Forms.Label lblStartInfo;
     private System.Windows.Forms.Button btnWorkflowRun;
     private System.Windows.Forms.Button btnWorkflowRecord;
-    private System.Windows.Forms.Button btnWorkflowMenu;
+    // private System.Windows.Forms.Button btnWorkflowMenu; (移除)
     // 已移除單鍵與間隔控制項
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.GroupBox groupBox1;
@@ -546,6 +549,7 @@
     private System.Windows.Forms.Button btnClearTest;
     private System.Windows.Forms.CheckBox chkTestMode;
     private System.Windows.Forms.TreeView tvSteps;
+    private System.Windows.Forms.Label lblClock;
     }
 }
 

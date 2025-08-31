@@ -10,6 +10,8 @@ namespace AutoPressApp.Services
     public class WorkflowRunner
     {
         public event Action<int, Step>? OnStepExecuting;
+    public event Action<int,int,bool>? OnLoopStarting; // currentLoop, totalLoops (or int.MaxValue), isInfinite
+    public event Action<int>? OnIntervalTick; // remaining milliseconds before next loop starts
         private readonly LogService _log;
         public double PlaybackSpeed { get; set; } = 1.0; // 1.0=normal, 2.0=2x speed (half delays)
 
@@ -25,10 +27,12 @@ namespace AutoPressApp.Services
             var ctx = new StepContext { CancellationToken = ct, DelayMultiplier = PlaybackSpeed };
             ctx.Log.OnLog += m => _log.Info(m);
 
+            bool infinite = wf.LoopEnabled && wf.LoopCount == null;
             int loops = wf.LoopEnabled ? (wf.LoopCount ?? int.MaxValue) : 1;
             for (int i = 0; i < loops && !ct.IsCancellationRequested; i++)
             {
-                _log.Info($"[Workflow] Run '{wf.Name}' loop {i + 1}/{loops}");
+                OnLoopStarting?.Invoke(i + 1, loops, infinite);
+                _log.Info($"[Workflow] Run '{wf.Name}' loop {i + 1}/{(infinite ? -1 : loops)}");
                 for (int stepIdx = 0; stepIdx < wf.Steps.Count; stepIdx++)
                 {
                     var step = wf.Steps[stepIdx];
@@ -37,8 +41,21 @@ namespace AutoPressApp.Services
                     OnStepExecuting?.Invoke(stepIdx, step);
                     await step.ExecuteAsync(ctx);
                 }
-                if (wf.LoopEnabled && wf.LoopIntervalMs > 0)
-                    await Task.Delay(wf.LoopIntervalMs, ct);
+                // Interval countdown
+                if (wf.LoopEnabled && wf.LoopIntervalMs > 0 && (infinite || i + 1 < loops))
+                {
+                    int remaining = wf.LoopIntervalMs;
+                    const int slice = 200; // update every 200ms
+                    while (remaining > 0)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        OnIntervalTick?.Invoke(remaining);
+                        int delay = remaining < slice ? remaining : slice;
+                        await Task.Delay(delay, ct);
+                        remaining -= delay;
+                    }
+                    OnIntervalTick?.Invoke(0);
+                }
             }
         }
 

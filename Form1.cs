@@ -146,7 +146,7 @@ namespace AutoPressApp
         private RecorderService? recorder;
     private List<AutoPressApp.Steps.Step>? liveWorkflowSteps;
 
-        private ContextMenuStrip? workflowMenu;
+    // 已移除 workflowMenu / btnWorkflowMenu
         // 模式狀態 (統一顯示 Recording / Playing)
     private enum RunMode { Idle, RecordingWorkflow, PlayingWorkflow }
         private RunMode currentMode = RunMode.Idle;
@@ -1080,6 +1080,51 @@ namespace AutoPressApp
             var log = new LogService();
             log.OnLog += m => UpdateStatus(m);
             var runner = new WorkflowRunner(log, delayMultiplier);
+            DateTime startTime = DateTime.Now;
+            void EnsureClockBaseline()
+            {
+                if (lblClock == null) return;
+                if (!lblClock.IsHandleCreated) return;
+                var lines = lblClock.Text.Split('\n');
+                if (lines.Length < 5)
+                {
+                    lblClock.Text = "Now --:--:--\nElapsed 00:00:00\nLoop -/-\nStep -/-\nNext --";
+                }
+            }
+            void UpdateClock(Action<string[]> mutator)
+            {
+                if (lblClock == null) return;
+                try
+                {
+                    lblClock.Invoke(new Action(() =>
+                    {
+                        EnsureClockBaseline();
+                        var arr = lblClock.Text.Split('\n');
+                        if (arr.Length < 5) return;
+                        mutator(arr);
+                        lblClock.Text = string.Join("\n", arr);
+                    }));
+                }
+                catch { }
+            }
+            var clockUpdaterCts = new CancellationTokenSource();
+            _ = Task.Run(async () =>
+            {
+                while (!clockUpdaterCts.IsCancellationRequested)
+                {
+                    if (lblClock != null)
+                    {
+                        var now = DateTime.Now;
+                        var elapsed = now - startTime;
+                        UpdateClock(arr =>
+                        {
+                            arr[0] = $"Now {now:HH:mm:ss}";
+                            arr[1] = $"Elapsed {elapsed:hh\\:mm\\:ss}";
+                        });
+                    }
+                    try { await Task.Delay(1000, clockUpdaterCts.Token); } catch { break; }
+                }
+            }, clockUpdaterCts.Token);
             // Apply loop settings from UI if enabled
             try
             {
@@ -1114,6 +1159,21 @@ namespace AutoPressApp
                     lstRecordedKeys.Refresh();
                 }
                 UpdateStatus($"[Preview] 執行步驟 {idx + 1}/{wf.Steps.Count}: {step.GetType().Name}");
+                UpdateClock(arr => arr[3] = $"Step {idx + 1}/{wf.Steps.Count}");
+            };
+            runner.OnLoopStarting += (curr, total, infinite) =>
+            {
+                UpdateClock(arr =>
+                {
+                    arr[2] = $"Loop {curr}/{(infinite?"∞":total.ToString())}";
+                    arr[4] = "Next --";
+                });
+            };
+            runner.OnIntervalTick += (remainingMs) =>
+            {
+                int sec = remainingMs / 1000;
+                int cs = (remainingMs % 1000) / 10;
+                UpdateClock(arr => arr[4] = remainingMs > 0 ? $"Next {sec:D2}.{cs:D2}s" : "Next RUN");
             };
             workflowCts?.Cancel();
             workflowCts = new CancellationTokenSource();
@@ -1136,31 +1196,11 @@ namespace AutoPressApp
                 if (currentMode == RunMode.PlayingWorkflow)
                     SetMode(RunMode.Idle);
                 ReindexTreeNodes();
+                try { clockUpdaterCts.Cancel(); } catch { }
             }
         }
 
-        private void btnWorkflowMenu_Click(object? sender, EventArgs e)
-        {
-            if (workflowMenu == null)
-            {
-                workflowMenu = new ContextMenuStrip();
-                workflowMenu.Items.Add("錄製 (Ctrl+Shift+R)", null, (_, __) => ToggleRecordWorkflow());
-                workflowMenu.Items.Add("執行 (選擇 Workflow JSON) (Ctrl+Shift+W)", null, (_, __) => RunWorkflowViaPicker());
-                workflowMenu.Items.Add("重新預覽最近錄製", null, (_, __) =>
-                {
-                    if (liveWorkflowSteps != null && liveWorkflowSteps.Count > 0)
-                    {
-                        var wf = new Workflow { Name = "Live Preview", Steps = new List<AutoPressApp.Steps.Step>(liveWorkflowSteps) };
-                        _ = RunWorkflowPreviewAsync(wf);
-                    }
-                    else
-                    {
-                        UpdateStatus("[Workflow] 尚無錄製內容可預覽");
-                    }
-                });
-            }
-            workflowMenu.Show(btnWorkflowMenu, new System.Drawing.Point(0, btnWorkflowMenu.Height));
-        }
+    // btnWorkflowMenu_Click 已移除
 
         private void chkLoop_CheckedChanged(object? sender, EventArgs e)
         {
