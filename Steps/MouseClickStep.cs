@@ -13,8 +13,8 @@ namespace AutoPressApp.Steps
 
         public override async Task ExecuteAsync(StepContext ctx)
         {
-            ctx.Log.Info($"[MouseClick] {Button} @ ({X},{Y}) mode={Mode}");
-            await Task.Run(() => ctx.Input.Click(X, Y, Button, Mode), ctx.CancellationToken);
+            ctx.Log.Info($"[MouseClick] {Button} @ ({X},{Y}) mode={Mode} dispatch={ctx.DispatchMode}");
+            await Task.Run(() => ctx.Input.Click(X, Y, Button, Mode, ctx.TargetWindowHandle, ctx.DispatchMode), ctx.CancellationToken);
             if (AfterDelayMs > 0) await Task.Delay(AfterDelayMs, ctx.CancellationToken);
         }
     }

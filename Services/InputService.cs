@@ -9,6 +9,8 @@ namespace AutoPressApp.Services
     {
         [DllImport("user32.dll")] static extern bool SetCursorPos(int X, int Y);
         [DllImport("user32.dll")] static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
     [DllImport("user32.dll")] static extern short VkKeyScan(char ch);
     [DllImport("user32.dll")] static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); // legacy fallback
     [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -16,6 +18,13 @@ namespace AutoPressApp.Services
         private const uint MOUSEEVENTF_LEFTUP = 0x0004;
         private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
         private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+    private const uint WM_MOUSEMOVE = 0x0200;
+    private const uint WM_LBUTTONDOWN = 0x0201;
+    private const uint WM_LBUTTONUP = 0x0202;
+    private const uint WM_RBUTTONDOWN = 0x0204;
+    private const uint WM_RBUTTONUP = 0x0205;
+    private const int MK_LBUTTON = 0x0001;
+    private const int MK_RBUTTON = 0x0002;
     private const int KEYEVENTF_KEYUP = 0x0002;
     private const uint INPUT_KEYBOARD = 1;
     private const uint KEYEVENTF_SCANCODE = 0x0008;
@@ -30,25 +39,49 @@ namespace AutoPressApp.Services
     [StructLayout(LayoutKind.Sequential)] struct HARDWAREINPUT { public uint uMsg; public ushort wParamL; public ushort wParamH; }
     [DllImport("user32.dll")] static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
-        public void Click(int x, int y, string button, CoordMode mode)
+        // 新增 dispatchMode/targetHwnd 參數 (呼叫端若未知可保留預設)
+        public void Click(int x, int y, string button, CoordMode mode, IntPtr targetHwnd = default, Steps.InputDispatchMode dispatchMode = Steps.InputDispatchMode.ForegroundSendInput)
         {
-            // For now, only screen coords supported; relative-to-window can be added later
-            SetCursorPos(x, y);
-            if (string.Equals(button, "right", StringComparison.OrdinalIgnoreCase))
+            if (dispatchMode == Steps.InputDispatchMode.BackgroundPostMessage && targetHwnd != IntPtr.Zero)
             {
-                mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
-                mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                // 背景模式：不移動實體游標，改用 PostMessage 投遞到視窗 (client 座標)
+                var pt = new POINT { X = x, Y = y };
+                // 僅支援記錄時以 Screen (暫不處理 Window 相對) => 轉為 client
+                ScreenToClient(targetHwnd, ref pt);
+                int lParam = (pt.Y << 16) | (pt.X & 0xFFFF);
+                if (string.Equals(button, "right", StringComparison.OrdinalIgnoreCase))
+                {
+                    PostMessage(targetHwnd, WM_MOUSEMOVE, IntPtr.Zero, (IntPtr)lParam); // 可選
+                    PostMessage(targetHwnd, WM_RBUTTONDOWN, (IntPtr)MK_RBUTTON, (IntPtr)lParam);
+                    PostMessage(targetHwnd, WM_RBUTTONUP, IntPtr.Zero, (IntPtr)lParam);
+                }
+                else
+                {
+                    PostMessage(targetHwnd, WM_MOUSEMOVE, IntPtr.Zero, (IntPtr)lParam);
+                    PostMessage(targetHwnd, WM_LBUTTONDOWN, (IntPtr)MK_LBUTTON, (IntPtr)lParam);
+                    PostMessage(targetHwnd, WM_LBUTTONUP, IntPtr.Zero, (IntPtr)lParam);
+                }
             }
             else
             {
-                mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
-                mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                // 前景模式：使用實體輸入
+                SetCursorPos(x, y);
+                if (string.Equals(button, "right", StringComparison.OrdinalIgnoreCase))
+                {
+                    mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, UIntPtr.Zero);
+                    mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, UIntPtr.Zero);
+                }
+                else
+                {
+                    mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, UIntPtr.Zero);
+                    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, UIntPtr.Zero);
+                }
             }
         }
 
     public void SendKeyCombo(string[] keys) => SendKeyCombo(keys, holdMs: 0, preDelayMs: 0);
 
-    public void SendKeyCombo(string[] keys, int holdMs, int preDelayMs)
+    public void SendKeyCombo(string[] keys, int holdMs, int preDelayMs, IntPtr targetHwnd = default, Steps.InputDispatchMode dispatchMode = Steps.InputDispatchMode.ForegroundSendInput)
         {
             // Parse modifiers and primary key (last non-modifier)
             bool ctrl = false, shift = false, alt = false, win = false;
@@ -63,8 +96,44 @@ namespace AutoPressApp.Services
                 else primary = s; // last wins
             }
 
-            // Build ordered list: modifiers down, primary down/up, modifiers up (reverse order)
+            // Background 模式不支援複雜組合 -> 仍可嘗試用 KeyDown/KeyUp 投遞 WM_KEY (可能失敗)
             if (preDelayMs > 0) System.Threading.Thread.Sleep(preDelayMs);
+            if (dispatchMode == Steps.InputDispatchMode.BackgroundPostMessage && targetHwnd != IntPtr.Zero)
+            {
+                // 以簡化方式：逐鍵 Down -> (hold) -> Up；修飾鍵維持 -> 主鍵 -> 釋放
+                void postKey(ushort vk, bool down)
+                {
+                    const uint WM_KEYDOWN = 0x0100; const uint WM_KEYUP = 0x0101; const uint WM_SYSKEYDOWN = 0x0104; const uint WM_SYSKEYUP = 0x0105;
+                    bool altPath = vk == 0x12; // ALT 走 SYSKEY
+                    uint msg = altPath ? (down ? WM_SYSKEYDOWN : WM_SYSKEYUP) : (down ? WM_KEYDOWN : WM_KEYUP);
+                    IntPtr wParam = (IntPtr)vk;
+                    // lParam 簡化: repeat=1 scanCode <<16
+                    uint scan = MapVirtualKey(vk, 0);
+                    int l = 1 | ((int)scan << 16);
+                    if (!down) l |= (1 << 30) | (1 << 31);
+                    PostMessage(targetHwnd, msg, wParam, (IntPtr)l);
+                }
+                if (ctrl) postKey(0x11, true);
+                if (shift) postKey(0x10, true);
+                if (alt) postKey(0x12, true);
+                if (win) postKey(0x5B, true);
+                if (!string.IsNullOrEmpty(primary))
+                {
+                    var vk = MapKeyStringToVk(primary);
+                    if (vk != 0)
+                    {
+                        postKey(vk, true);
+                        if (holdMs > 0) System.Threading.Thread.Sleep(holdMs);
+                        postKey(vk, false);
+                    }
+                }
+                if (win) postKey(0x5B, false);
+                if (alt) postKey(0x12, false);
+                if (shift) postKey(0x10, false);
+                if (ctrl) postKey(0x11, false);
+                if (AfterComboDelayNeeded()) ; // placeholder
+                return;
+            }
 
             var seq = new System.Collections.Generic.List<INPUT>();
             void addVkKey(ushort vk, bool down)
@@ -227,10 +296,21 @@ namespace AutoPressApp.Services
         }
 
         // 單一鍵 Down/Up 事件 (供 KeySequenceStep 使用)
-        public void SendKeyEvent(string key, bool down)
+        public void SendKeyEvent(string key, bool down, IntPtr targetHwnd = default, Steps.InputDispatchMode dispatchMode = Steps.InputDispatchMode.ForegroundSendInput)
         {
             var vk = MapKeyStringToVk(key);
             if (vk == 0) return;
+            if (dispatchMode == Steps.InputDispatchMode.BackgroundPostMessage && targetHwnd != IntPtr.Zero)
+            {
+                const uint WM_KEYDOWN = 0x0100; const uint WM_KEYUP = 0x0101; const uint WM_SYSKEYDOWN = 0x0104; const uint WM_SYSKEYUP = 0x0105;
+                bool altPath = vk == 0x12; // ALT
+                uint msg = altPath ? (down ? WM_SYSKEYDOWN : WM_SYSKEYUP) : (down ? WM_KEYDOWN : WM_KEYUP);
+                uint scan = MapVirtualKey(vk, 0);
+                int l = 1 | ((int)scan << 16);
+                if (!down) l |= (1 << 30) | (1 << 31);
+                PostMessage(targetHwnd, msg, (IntPtr)vk, (IntPtr)l);
+                return;
+            }
             try
             {
                 var list = new System.Collections.Generic.List<INPUT>();
@@ -267,5 +347,9 @@ namespace AutoPressApp.Services
                 keybd_event(vk, 0, down ? 0u : KEYEVENTF_KEYUP, UIntPtr.Zero);
             }
         }
+
+    [StructLayout(LayoutKind.Sequential)] struct POINT { public int X; public int Y; }
+
+    private bool AfterComboDelayNeeded() => false; // future extension hook
     }
 }

@@ -14,6 +14,8 @@ namespace AutoPressApp.Services
     public event Action<int>? OnIntervalTick; // remaining milliseconds before next loop starts
         private readonly LogService _log;
         public double PlaybackSpeed { get; set; } = 1.0; // 1.0=normal, 2.0=2x speed (half delays)
+    public Steps.InputDispatchMode DispatchMode { get; set; } = Steps.InputDispatchMode.ForegroundSendInput;
+    public IntPtr TargetWindowHandle { get; set; } = IntPtr.Zero;
 
         public WorkflowRunner(LogService log, double playbackSpeed = 1.0)
         {
@@ -24,7 +26,7 @@ namespace AutoPressApp.Services
 
         public async Task RunAsync(Workflow wf, CancellationToken ct)
         {
-            var ctx = new StepContext { CancellationToken = ct, DelayMultiplier = PlaybackSpeed };
+            var ctx = new StepContext { CancellationToken = ct, DelayMultiplier = PlaybackSpeed, DispatchMode = DispatchMode, TargetWindowHandle = TargetWindowHandle };
             ctx.Log.OnLog += m => _log.Info(m);
 
             bool infinite = wf.LoopEnabled && wf.LoopCount == null;

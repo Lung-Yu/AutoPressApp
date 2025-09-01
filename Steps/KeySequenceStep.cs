@@ -30,7 +30,7 @@ namespace AutoPressApp.Steps
                 if (ctx.CancellationToken.IsCancellationRequested) break;
                 if (ev.DelayMsBefore > 0)
                     await Task.Delay(ev.DelayMsBefore, ctx.CancellationToken);
-                ctx.Input.SendKeyEvent(ev.Key, ev.Down);
+                ctx.Input.SendKeyEvent(ev.Key, ev.Down, ctx.TargetWindowHandle, ctx.DispatchMode);
                 if (++i % 20 == 0) // 週期性快照資訊
                     ctx.Log.Info($"[KeySequence] progressed {i}/{Events.Count}");
             }

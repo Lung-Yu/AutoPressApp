@@ -1097,6 +1097,11 @@ namespace AutoPressApp
                 var log = new LogService();
                 log.OnLog += (m) => UpdateStatus(m);
                 var runner = new WorkflowRunner(log, delayMultiplier);
+                // 設定派送模式
+                runner.DispatchMode = (cmbDispatchMode != null && cmbDispatchMode.SelectedIndex == 1)
+                    ? Steps.InputDispatchMode.BackgroundPostMessage
+                    : Steps.InputDispatchMode.ForegroundSendInput;
+                runner.TargetWindowHandle = ResolveSelectedWindowHandle();
                 workflowCts?.Cancel();
                 workflowCts = new CancellationTokenSource();
                 await runner.RunAsync(wf, workflowCts.Token);
@@ -1105,6 +1110,31 @@ namespace AutoPressApp
             {
                 MessageBox.Show("執行流程失敗: " + ex.Message, "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+    }
+
+        private IntPtr ResolveSelectedWindowHandle()
+        {
+            try
+            {
+                if (cmbApplications == null || cmbApplications.SelectedIndex <= 0)
+                {
+                    return GetForegroundWindow(); // (當前焦點視窗)
+                }
+                // 項目格式: "WindowTitle (ProcessName|0xHANDLE)" 或其他自定義，這裡嘗試解析最後的 HANDLE
+                var text = cmbApplications.SelectedItem?.ToString();
+                if (string.IsNullOrEmpty(text)) return IntPtr.Zero;
+                int idx = text.LastIndexOf("0x", StringComparison.OrdinalIgnoreCase);
+                if (idx >= 0)
+                {
+                    var hex = text.Substring(idx + 2).TrimEnd(')');
+                    if (IntPtr.Size == 8 && ulong.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var h64))
+                        return (IntPtr)(long)h64;
+                    if (IntPtr.Size == 4 && uint.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out var h32))
+                        return (IntPtr)(int)h32;
+                }
+            }
+            catch { }
+            return IntPtr.Zero;
         }
 
         private void ToggleRecordWorkflow()

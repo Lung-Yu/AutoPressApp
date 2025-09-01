@@ -147,6 +147,8 @@
             this.groupBox1.Controls.Add(this.lblApplication);
             this.groupBox1.Controls.Add(this.cmbApplications);
             this.groupBox1.Controls.Add(this.chkTestMode);
+            this.groupBox1.Controls.Add(this.cmbDispatchMode);
+            this.groupBox1.Controls.Add(this.lblDispatchMode);
             this.groupBox1.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
             this.groupBox1.Location = new System.Drawing.Point(30, 30);
             this.groupBox1.Name = "groupBox1";
@@ -186,6 +188,29 @@
             this.lblApplication.Size = new System.Drawing.Size(79, 18);
             this.lblApplication.TabIndex = 8;
             this.lblApplication.Text = "目標視窗:";
+            // 
+            // lblDispatchMode
+            // 
+            this.lblDispatchMode = new System.Windows.Forms.Label();
+            this.lblDispatchMode.AutoSize = true;
+            this.lblDispatchMode.Font = new System.Drawing.Font("Microsoft JhengHei", 10F);
+            this.lblDispatchMode.Location = new System.Drawing.Point(30, 30);
+            this.lblDispatchMode.Name = "lblDispatchMode";
+            this.lblDispatchMode.Size = new System.Drawing.Size(79, 18);
+            this.lblDispatchMode.TabIndex = 42;
+            this.lblDispatchMode.Text = "輸入模式:";
+            // 
+            // cmbDispatchMode
+            // 
+            this.cmbDispatchMode = new System.Windows.Forms.ComboBox();
+            this.cmbDispatchMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbDispatchMode.Font = new System.Drawing.Font("Microsoft JhengHei", 9F);
+            this.cmbDispatchMode.Items.AddRange(new object[] {"前景模擬","背景訊息"});
+            this.cmbDispatchMode.Location = new System.Drawing.Point(100, 28);
+            this.cmbDispatchMode.Name = "cmbDispatchMode";
+            this.cmbDispatchMode.Size = new System.Drawing.Size(150, 24);
+            this.cmbDispatchMode.TabIndex = 43;
+            this.cmbDispatchMode.SelectedIndex = 0;
             // 
             // btnRefresh
             // 
@@ -601,6 +626,8 @@
     private System.Windows.Forms.Button btnSaveCurrent;
     private System.Windows.Forms.Button btnDeleteSaved;
     private System.Windows.Forms.Button btnRefreshSaved;
+    private System.Windows.Forms.Label lblDispatchMode;
+    private System.Windows.Forms.ComboBox cmbDispatchMode;
     }
 }
 

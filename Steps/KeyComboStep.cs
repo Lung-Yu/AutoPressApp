@@ -18,7 +18,7 @@ namespace AutoPressApp.Steps
         {
             string display = string.Join("+", Keys);
             ctx.Log.Info($"[KeyCombo] {display} (pre={PreDelayMs}ms hold={HoldMs}ms)");
-            await System.Threading.Tasks.Task.Run(() => ctx.Input.SendKeyCombo(Keys, HoldMs, PreDelayMs), ctx.CancellationToken);
+            await System.Threading.Tasks.Task.Run(() => ctx.Input.SendKeyCombo(Keys, HoldMs, PreDelayMs, ctx.TargetWindowHandle, ctx.DispatchMode), ctx.CancellationToken);
             if (AfterDelayMs > 0)
                 await System.Threading.Tasks.Task.Delay(AfterDelayMs, ctx.CancellationToken);
         }
